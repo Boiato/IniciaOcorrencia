@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOIATO Web Control</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            background: #1a1a1a;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #333;
+            margin: 15px 0;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 5px;
+            background: #2196F3;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-off {
+            background: #f44336;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+        .timer {
+            color: #4CAF50;
+            font-weight: bold;
+            font-size: 1.5em;
+            margin: 15px 0;
+            font-family: monospace;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 25px;
+        }
+        h3 {
+            margin-top: 0;
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>BOIATO Web Control</h1>
+
+    <!-- Card da Bomba com Cronômetro Dinâmico -->
+    <div class="card">
+        <h3>Bomba</h3>
+        <p class="timer" id="display-bomba">Desligado</p>
+        <button class="btn" onclick="adicionarTempo(15)">+15m</button>
+        <button class="btn btn-off" onclick="desligarBomba()">OFF</button>
+    </div>
+
+    <!-- Cards de Nível de Água Estáticos -->
+    <div class="card">
+        <h3>Cozinha: <span style="color: #2196F3;">75%</span></h3>
+    </div>
+
+    <div class="card">
+        <h3>Casa: <span style="color: #2196F3;">90%</span></h3>
+    </div>
+</div>
+
+<script>
+    // Variável para armazenar o momento exato em que a bomba deve desligar
+    let tempoFimBomba = localStorage.getItem('tempoFimBomba') ? parseInt(localStorage.getItem('tempoFimBomba')) : 0;
+
+    function adicionarTempo(minutos) {
+        const agora = Date.now();
+        // Se a bomba já estiver ligada, soma ao tempo restante. Se não, começa do agora.
+        let base = (tempoFimBomba > agora) ? tempoFimBomba : agora;
+        tempoFimBomba = base + (minutos * 60 * 1000);
+        
+        // Salva na memória do navegador para não sumir ao atualizar a página
+        localStorage.setItem('tempoFimBomba', tempoFimBomba);
+        atualizarPainel();
+    }
+
+    function desligarBomba() {
+        tempoFimBomba = 0;
+        localStorage.setItem('tempoFimBomba', 0);
+        atualizarPainel();
+    }
+
+    function formatarTempo(tempoFim) {
+        const agora = Date.now();
+        if (tempoFim <= agora) {
+            return "Desligado";
+        }
+        
+        const restanteSegundos = Math.floor((tempoFim - agora) / 1000);
+        const minutos = Math.floor(restanteSegundos / 60);
+        const segundos = restanteSegundos % 60;
+        
+        // Adiciona o zero à esquerda se for menor que 10
+        const minStr = minutos < 10 ? "0" + minutos : minutos;
+        const segStr = segundos < 10 ? "0" + segundos : segundos;
+        
+        return `${minStr}:${segStr}`;
+    }
+
+    function atualizarPainel() {
+        const display = document.getElementById('display-bomba');
+        const tempoFormatado = formatarTempo(tempoFimBomba);
+        display.innerText = tempoFormatado;
+        
+        // Muda a cor do texto do timer se estiver ativo ou desligado
+        if (tempoFormatado === "Desligado") {
+            display.style.color = "#f44336"; // Vermelho se desligado
+        } else {
+            display.style.color = "#4CAF50"; // Verde se ligado
+        }
+    }
+
+    // Atualiza o cronômetro na tela a cada 1 segundo (em vez de atualizar a página toda a cada 5s)
+    setInterval(atualizarPainel, 1000);
+
+    // Executa uma vez ao carregar a página
+    atualizarPainel();
+</script>
+
+</body>
+</html>
