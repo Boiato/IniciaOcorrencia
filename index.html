@@ -267,3 +267,62 @@
         const agora = Date.now();
         let base = (tempos[tipo] > agora) ? tempos[tipo] : agora;
         tempos[tipo] = base + (minutos * 60 * 1000);
+  localStorage.setItem('tempo' + tipo, tempos[tipo]); // Salva para não perder ao atualizar a aba
+  atualizarPainel();
+}
+
+// Desliga forçadamente a fonte de alimentação correspondente
+function desligar(tipo) {
+  tempos[tipo] = 0;
+  localStorage.setItem('tempo' + tipo, 0);
+  atualizarPainel();
+}
+
+// Transforma milissegundos em string legível: exibe Dias (d) e Horas (h) apenas se necessário
+function formatarTempoExtenso(tempoFim) {
+  const agora = Date.now();
+  if (tempoFim <= agora) return "Desligado";
+
+  let segundosTotais = Math.floor((tempoFim - agora) / 1000);
+  const dias = Math.floor(segundosTotais / 86400);
+  segundosTotais %= 86400;
+
+  const horas = Math.floor(segundosTotais / 3600);
+  segundosTotais %= 3600;
+
+  const minutos = Math.floor(segundosTotais / 60);
+  const segundos = segundosTotais % 60;
+
+  let retorno = "";
+  if (dias > 0) retorno += (dias < 10 ? "0" + dias : dias) + "d ";
+  if (horas > 0 || dias > 0) retorno += (horas < 10 ? "0" + horas : horas) + "h ";
+  retorno += (minutos < 10 ? "0" + minutos : minutos) + "m ";
+  retorno += (segundos < 10 ? "0" + segundos : segundos) + "s";
+
+  return retorno;
+}
+
+// Atualiza os displays visuais dos relés na tela do navegador
+function atualizarPainel() {
+  ['Bomba', 'Concessionaria'].forEach(tipo => {
+    const display = document.getElementById(`display-${tipo.toLowerCase()}`);
+    const formatado = formatarTempoExtenso(tempos[tipo]);
+    display.innerText = formatado;
+
+    // Altera dinamicamente a cor da fonte: Vermelho (Inativo) ou Verde (Alimentando)
+    display.style.color = (formatado === "Desligado") ? "#ef4444" : "#4ade80";
+  });
+}
+
+// Loop interno do navegador: Executa a contagem regressiva a cada 1 segundo (1000ms)
+setInterval(atualizarPainel, 1000);
+atualizarPainel();
+
+// ==========================================
+// CONFIGURAÇÃO DOS GRÁFICOS DOS RESERVATÓRIOS
+// ==========================================
+
+// Eixo X (Linha do Tempo): Leituras agendadas de 3 em 3 horas para capturar as flutuações do dia
+const rotasHoras = ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
+
+// Banco de Dados Temporário preenchido com
