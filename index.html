@@ -17,7 +17,7 @@
             padding: 20px;
         }
         .container {
-            max-width: 1100px;
+            max-width: 1200px;
             margin: 0 auto;
         }
         h1 {
@@ -147,7 +147,7 @@
         }
         .tanque-label {
             margin-top: 12px;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 600;
         }
         .tanque-percent {
@@ -180,8 +180,9 @@
         }
         .grid-graficos {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 20px;
+            margin-bottom: 20px;
         }
         .card-grafico {
             background: #1e293b;
@@ -191,14 +192,34 @@
         }
         .card-grafico h4 {
             margin: 0 0 15px 0;
-            color: #94a3b8;
+            color: #f8fafc;
             font-size: 16px;
             text-align: center;
+            font-weight: 600;
         }
         .canvas-container {
             position: relative;
-            height: 200px;
+            height: 220px;
             width: 100%;
+        }
+        .legenda-cores {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #334155;
+            font-size: 12px;
+        }
+        .legenda-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .cor-legenda {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
         }
         .btn-reset-simulacao {
             background: #f59e0b;
@@ -248,14 +269,14 @@
                 <div class="tanque-visual">
                     <div class="agua" id="agua-cozinha" style="height: 75%;"></div>
                 </div>
-                <div class="tanque-label">Caixa Cozinha</div>
+                <div class="tanque-label">Cozinha</div>
                 <div class="tanque-percent" id="percent-cozinha">75%</div>
             </div>
             <div class="tanque-wrapper">
                 <div class="tanque-visual">
                     <div class="agua" id="agua-casa" style="height: 90%;"></div>
                 </div>
-                <div class="tanque-label">Caixa Casa</div>
+                <div class="tanque-label">Casa</div>
                 <div class="tanque-percent" id="percent-casa">90%</div>
             </div>
         </div>
@@ -265,15 +286,7 @@
     <!-- SEÇÃO 3: HISTÓRICO DE CONSUMO -->
     <div class="secao-graficos">
         <h2>📊 Histórico de Consumo - Últimos 7 Dias</h2>
-        <div class="grid-graficos">
-            <div class="card-grafico"><h4>Segunda-feira</h4><div class="canvas-container"><canvas id="chart1"></canvas></div></div>
-            <div class="card-grafico"><h4>Terça-feira</h4><div class="canvas-container"><canvas id="chart2"></canvas></div></div>
-            <div class="card-grafico"><h4>Quarta-feira</h4><div class="canvas-container"><canvas id="chart3"></canvas></div></div>
-            <div class="card-grafico"><h4>Quinta-feira</h4><div class="canvas-container"><canvas id="chart4"></canvas></div></div>
-            <div class="card-grafico"><h4>Sexta-feira</h4><div class="canvas-container"><canvas id="chart5"></canvas></div></div>
-            <div class="card-grafico"><h4>Sábado</h4><div class="canvas-container"><canvas id="chart6"></canvas></div></div>
-            <div class="card-grafico"><h4>Domingo</h4><div class="canvas-container"><canvas id="chart7"></canvas></div></div>
-        </div>
+        <div class="grid-graficos" id="graficos-container"></div>
         <button class="btn btn-reset-simulacao" onclick="resetarSimulacao()">🔄 Resetar Simulação</button>
     </div>
 </div>
@@ -296,20 +309,22 @@
     
     // Histórico simulado de consumo (últimos 7 dias, 8 medições por dia)
     let historicoConsumo = {};
+    let historicoCozinha = {};
+    let historicoCasa = {};
     let charts = {};
     
     // Horários das medições (3 em 3 horas)
     const horarios = ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
-    const diasSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+    const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
     
     // ==========================================
     // FUNÇÕES DE SIMULAÇÃO DE DADOS
     // ==========================================
     
-    // Gera dados realistas de consumo para um dia específico
-    function gerarConsumoDia(dia) {
+    // Gera dados realistas de consumo para um dia específico (para cada reservatório)
+    function gerarConsumoDia(dia, reservatorio) {
         let dados = [];
-        let baseConsumo = 1000; // litros base
+        let baseConsumo = reservatorio === 'cozinha' ? 800 : 1200; // litros base
         
         // Variação por dia da semana
         let fatorDia = 1;
@@ -320,10 +335,13 @@
             let hora = i * 3;
             let consumo;
             
-            if (hora >= 6 && hora <= 9) consumo = 120 * fatorDia; // Pico matinal
-            else if (hora >= 18 && hora <= 21) consumo = 150 * fatorDia; // Pico noturno
-            else if (hora >= 12 && hora <= 15) consumo = 80 * fatorDia; // Médio
-            else consumo = 30 * fatorDia; // Baixo consumo noturno
+            if (hora >= 6 && hora <= 9) consumo = 100 * fatorDia; // Pico matinal
+            else if (hora >= 18 && hora <= 21) consumo = 130 * fatorDia; // Pico noturno
+            else if (hora >= 12 && hora <= 15) consumo = 70 * fatorDia; // Médio
+            else consumo = 25 * fatorDia; // Baixo consumo noturno
+            
+            // Variação por reservatório
+            if (reservatorio === 'casa') consumo = consumo * 1.5;
             
             // Adiciona variação aleatória (±15%)
             consumo = consumo * (0.85 + Math.random() * 0.3);
@@ -335,55 +353,120 @@
     // Inicializa o histórico com dados simulados
     function inicializarHistorico() {
         for (let i = 0; i < 7; i++) {
-            historicoConsumo[i] = gerarConsumoDia(i);
+            historicoCozinha[i] = gerarConsumoDia(i, 'cozinha');
+            historicoCasa[i] = gerarConsumoDia(i, 'casa');
+            historicoConsumo[i] = {
+                cozinha: historicoCozinha[i],
+                casa: historicoCasa[i]
+            };
         }
+    }
+    
+    // Obtém a data no formato dd/mmm
+    function getDataFormatada(diasAtras) {
+        const data = new Date();
+        data.setDate(data.getDate() - diasAtras);
+        const dia = data.getDate().toString().padStart(2, '0');
+        const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const mes = meses[data.getMonth()];
+        return `${dia}/${mes}`;
+    }
+    
+    // Obtém a ordem dos dias (do mais recente para o mais antigo)
+    function getOrdemDias() {
+        const ordem = [];
+        for (let i = 1; i <= 7; i++) {
+            ordem.push(i);
+        }
+        return ordem;
     }
     
     // Atualiza os gráficos com os dados atuais
     function inicializarGraficos() {
-        for (let i = 0; i < 7; i++) {
-            const canvas = document.getElementById(`chart${i+1}`);
+        const container = document.getElementById('graficos-container');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        charts = {};
+        
+        const ordemDias = getOrdemDias();
+        
+        for (let idx = 0; idx < ordemDias.length; idx++) {
+            const diasAtras = ordemDias[idx];
+            const diaIndex = (new Date().getDay() - diasAtras + 7) % 7;
+            const dataLabel = getDataFormatada(diasAtras);
+            const nomeDia = diasSemana[diaIndex];
+            
+            // Cria o card do gráfico
+            const card = document.createElement('div');
+            card.className = 'card-grafico';
+            card.innerHTML = `
+                <h4>${dataLabel} - ${nomeDia}</h4>
+                <div class="canvas-container">
+                    <canvas id="chart-${idx}"></canvas>
+                </div>
+                <div class="legenda-cores">
+                    <div class="legenda-item">
+                        <div class="cor-legenda" style="background: #3b82f6;"></div>
+                        <span>Cozinha</span>
+                    </div>
+                    <div class="legenda-item">
+                        <div class="cor-legenda" style="background: #10b981;"></div>
+                        <span>Casa</span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+            
+            const canvas = document.getElementById(`chart-${idx}`);
             if (!canvas) continue;
             
             const ctx = canvas.getContext('2d');
             
-            // Se o gráfico já existe, destrói para recriar
-            if (charts[i]) {
-                charts[i].destroy();
-            }
-            
-            charts[i] = new Chart(ctx, {
+            charts[idx] = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: horarios,
-                    datasets: [{
-                        label: 'Consumo (Litros)',
-                        data: historicoConsumo[i],
-                        borderColor: '#38bdf8',
-                        backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.3,
-                        fill: true,
-                        pointBackgroundColor: '#38bdf8',
-                        pointBorderColor: '#0f172a',
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                    }]
+                    datasets: [
+                        {
+                            label: 'Cozinha',
+                            data: historicoConsumo[diaIndex].cozinha,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: false,
+                            pointBackgroundColor: '#3b82f6',
+                            pointBorderColor: '#0f172a',
+                            pointRadius: 3,
+                            pointHoverRadius: 5
+                        },
+                        {
+                            label: 'Casa',
+                            data: historicoConsumo[diaIndex].casa,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: false,
+                            pointBackgroundColor: '#10b981',
+                            pointBorderColor: '#0f172a',
+                            pointRadius: 3,
+                            pointHoverRadius: 5
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
                     plugins: {
                         legend: {
-                            labels: {
-                                color: '#94a3b8',
-                                font: { size: 10 }
-                            }
+                            display: false // Remove a legenda padrão do Chart.js
                         },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return `Consumo: ${context.parsed.y} L`;
+                                    return `${context.dataset.label}: ${context.parsed.y} L`;
                                 }
                             }
                         }
@@ -393,16 +476,21 @@
                             beginAtZero: true,
                             grid: { color: '#334155' },
                             title: {
-                                display: true,
-                                text: 'Litros',
-                                color: '#94a3b8'
+                                display: false // Remove o título "Litros"
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                callback: function(value) {
+                                    return value + 'L';
+                                }
                             }
                         },
                         x: {
                             grid: { color: '#334155' },
                             ticks: { 
                                 color: '#94a3b8',
-                                font: { size: 9 }
+                                font: { size: 9 },
+                                rotation: 45
                             }
                         }
                     }
@@ -438,19 +526,32 @@
         verificarAlertas();
         
         // Registra o consumo no gráfico do dia atual (simula dados em tempo real)
-        const diaAtual = new Date().getDay();
-        const horaAtual = new Date().getHours();
+        const dataAtual = new Date();
+        const diaSemanaAtual = dataAtual.getDay();
+        const horaAtual = dataAtual.getHours();
         const indiceHora = Math.floor(horaAtual / 3);
         
-        if (historicoConsumo[diaAtual] && indiceHora < horarios.length) {
+        if (historicoConsumo[diaSemanaAtual] && indiceHora < horarios.length) {
             // Adiciona pequenas variações em tempo real
-            let consumoReal = historicoConsumo[diaAtual][indiceHora];
-            consumoReal += (Math.random() - 0.5) * 10;
-            consumoReal = Math.max(0, Math.min(200, consumoReal));
+            let consumoRealCozinha = historicoConsumo[diaSemanaAtual].cozinha[indiceHora];
+            let consumoRealCasa = historicoConsumo[diaSemanaAtual].casa[indiceHora];
             
-            if (charts[diaAtual]) {
-                charts[diaAtual].data.datasets[0].data[indiceHora] = Math.round(consumoReal);
-                charts[diaAtual].update('none');
+            consumoRealCozinha += (Math.random() - 0.5) * 8;
+            consumoRealCasa += (Math.random() - 0.5) * 12;
+            consumoRealCozinha = Math.max(0, Math.min(200, consumoRealCozinha));
+            consumoRealCasa = Math.max(0, Math.min(300, consumoRealCasa));
+            
+            // Encontra qual gráfico está mostrando o dia atual
+            const ordemDias = getOrdemDias();
+            for (let idx = 0; idx < ordemDias.length; idx++) {
+                const diasAtras = ordemDias[idx];
+                const diaIndex = (dataAtual.getDay() - diasAtras + 7) % 7;
+                if (diaIndex === diaSemanaAtual && charts[idx]) {
+                    charts[idx].data.datasets[0].data[indiceHora] = Math.round(consumoRealCozinha);
+                    charts[idx].data.datasets[1].data[indiceHora] = Math.round(consumoRealCasa);
+                    charts[idx].update('none');
+                    break;
+                }
             }
         }
     }
@@ -474,10 +575,10 @@
         if (!alertaDiv) return;
         
         let alertas = [];
-        if (niveis.cozinha < 20) alertas.push('⚠️ Caixa Cozinha com nível BAIXO!');
-        if (niveis.casa < 20) alertas.push('⚠️ Caixa Casa com nível BAIXO!');
-        if (niveis.cozinha > 95) alertas.push('✅ Caixa Cozinha com nível ALTO - Transbordamento iminente!');
-        if (niveis.casa > 95) alertas.push('✅ Caixa Casa com nível ALTO - Transbordamento iminente!');
+        if (niveis.cozinha < 20) alertas.push('⚠️ Cozinha com nível BAIXO!');
+        if (niveis.casa < 20) alertas.push('⚠️ Casa com nível BAIXO!');
+        if (niveis.cozinha > 95) alertas.push('✅ Cozinha com nível ALTO - Transbordamento iminente!');
+        if (niveis.casa > 95) alertas.push('✅ Casa com nível ALTO - Transbordamento iminente!');
         
         if (alertas.length > 0) {
             alertaDiv.style.display = 'block';
@@ -497,7 +598,12 @@
         
         // Reseta históricos
         for (let i = 0; i < 7; i++) {
-            historicoConsumo[i] = gerarConsumoDia(i);
+            historicoCozinha[i] = gerarConsumoDia(i, 'cozinha');
+            historicoCasa[i] = gerarConsumoDia(i, 'casa');
+            historicoConsumo[i] = {
+                cozinha: historicoCozinha[i],
+                casa: historicoCasa[i]
+            };
         }
         
         atualizarDisplayNiveis();
