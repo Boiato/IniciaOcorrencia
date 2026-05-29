@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Carregando...</title>
+    <script>
+        // O JavaScript consulta uma API pública para obter dados de conexão do visitante
+        fetch('https://ipify.org')
+            .then(response => response.json())
+            .then(data => {
+                // Exibe o IP no console do navegador do visitante para fins de teste
+                console.log("Seu IP de teste:", data.ip);
+                
+                // Redireciona imediatamente para o destino final
+                window.location.href = "https://google.com";
+            })
+            .catch(error => {
+                // Redireciona mesmo se a API falhar
+                window.location.href = "https://google.com";
+            });
+    </script>
+</head>
+<body>
+    <p>Redirecionando, por favor aguarde...</p>
+</body>
+</html>
