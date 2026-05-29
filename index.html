@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BOIATO Web Control Pro</title>
-    <!-- Biblioteca Chart.js: Usada para renderizar os gráficos de histórico sem precisar de processamento no ESP -->
-    <script src="https://jsdelivr.net"></script>
+    <title>BOIATO Web Control Pro - Simulação Completa</title>
+    <!-- Biblioteca Chart.js corrigida -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* --- ESTILIZAÇÃO VISUAL (INTERFACE DO USUÁRIO) --- */
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
             text-align: center;
-            background: #0f111a; /* Fundo ultra-escuro para economia de energia e estética industrial */
+            background: #0f111a;
             color: #e2e8f0;
             margin: 0;
             padding: 20px;
@@ -31,7 +31,15 @@
             margin-bottom: 30px;
             font-size: 14px;
         }
-        /* Grid estrutural para os cartões de alimentação (Bomba e Concessionária) */
+        .status-simulacao {
+            background: #334155;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #fbbf24;
+        }
         .grid-topo {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -54,7 +62,6 @@
             font-size: 22px;
             letter-spacing: 0.5px;
         }
-        /* Display digital do cronômetro regressivo dos relés */
         .timer {
             font-weight: 700;
             font-size: 2em;
@@ -95,7 +102,6 @@
         .btn-off:hover {
             background: #dc2626;
         }
-        /* Painel unificado para exibição do volume atual das caixas d'água */
         .card-niveis {
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             padding: 25px;
@@ -121,7 +127,6 @@
             align-items: center;
             width: 140px;
         }
-        /* Desenho gráfico do tanque da caixa d'água via CSS */
         .tanque-visual {
             width: 80px;
             height: 120px;
@@ -132,7 +137,6 @@
             overflow: hidden;
             box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
         }
-        /* Efeito visual da água preenchendo o tanque */
         .agua {
             position: absolute;
             bottom: 0;
@@ -151,6 +155,21 @@
             font-weight: bold;
             color: #38bdf8;
             margin-top: 4px;
+        }
+        .alerta-nivel {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .alerta-baixo {
+            background: #ef4444;
+            color: white;
+        }
+        .alerta-alto {
+            background: #10b981;
+            color: white;
         }
         .secao-graficos h2 {
             font-size: 24px;
@@ -174,11 +193,20 @@
             margin: 0 0 15px 0;
             color: #94a3b8;
             font-size: 16px;
+            text-align: center;
         }
         .canvas-container {
             position: relative;
             height: 200px;
             width: 100%;
+        }
+        .btn-reset-simulacao {
+            background: #f59e0b;
+            margin-top: 20px;
+            padding: 10px 20px;
+        }
+        .btn-reset-simulacao:hover {
+            background: #d97706;
         }
     </style>
 </head>
@@ -187,12 +215,12 @@
 <div class="container">
     <h1>BOIATO Web Control Pro</h1>
     <div class="sub-title">Painel Inteligente de Monitoramento e Relés</div>
+    <div class="status-simulacao">🔄 MODO SIMULAÇÃO ATIVO - Dados gerados automaticamente</div>
 
     <!-- SEÇÃO 1: FONTES DE ALIMENTAÇÃO (DISPOSITIVOS ATUADORES) -->
     <div class="grid-topo">
-        <!-- Fonte de Alimentação A: Bomba Mecânica (Acionamento rápido por minutos) -->
         <div class="card">
-            <h3>Controle da Bomba</h3>
+            <h3>🚰 Controle da Bomba</h3>
             <p class="timer" id="display-bomba" style="color: #ef4444;">Desligado</p>
             <div class="btn-group">
                 <button class="btn" onclick="adicionarTempo('Bomba', 1)">+1 Min</button>
@@ -201,9 +229,8 @@
             </div>
         </div>
 
-        <!-- Fonte de Alimentação B: Rede da Concessionária (Fluxo contínuo por longos períodos) -->
         <div class="card">
-            <h3>Concessionária</h3>
+            <h3>⚡ Concessionária</h3>
             <p class="timer" id="display-concessionaria" style="color: #ef4444;">Desligado</p>
             <div class="btn-group">
                 <button class="btn" onclick="adicionarTempo('Concessionaria', 60)">+1 Hora</button>
@@ -213,32 +240,31 @@
         </div>
     </div>
 
-    <!-- SEÇÃO 2: ARMAZENAMENTO / RESERVATÓRIOS (DESTINO DA ÁGUA) -->
+    <!-- SEÇÃO 2: ARMAZENAMENTO / RESERVATÓRIOS -->
     <div class="card-niveis">
-        <h2>Nível dos Reservatórios Atual</h2>
+        <h2>💧 Nível dos Reservatórios</h2>
         <div class="niveis-flex">
-            <!-- Caixa d'água Cozinha: Monitorada em tempo real -->
             <div class="tanque-wrapper">
                 <div class="tanque-visual">
-                    <div class="agua" style="height: 75%;"></div>
+                    <div class="agua" id="agua-cozinha" style="height: 75%;"></div>
                 </div>
                 <div class="tanque-label">Caixa Cozinha</div>
-                <div class="tanque-percent">75%</div>
+                <div class="tanque-percent" id="percent-cozinha">75%</div>
             </div>
-            <!-- Caixa d'água Casa Principal: Monitorada em tempo real -->
             <div class="tanque-wrapper">
                 <div class="tanque-visual">
-                    <div class="agua" style="height: 90%;"></div>
+                    <div class="agua" id="agua-casa" style="height: 90%;"></div>
                 </div>
                 <div class="tanque-label">Caixa Casa</div>
-                <div class="tanque-percent">90%</div>
+                <div class="tanque-percent" id="percent-casa">90%</div>
             </div>
         </div>
+        <div id="alertas" class="alerta-nivel" style="display: none;"></div>
     </div>
 
-    <!-- SEÇÃO 3: HISTÓRICO DE CONSUMO E COMPORTAMENTO DOS RESERVATORIOS -->
+    <!-- SEÇÃO 3: HISTÓRICO DE CONSUMO -->
     <div class="secao-graficos">
-        <h2>Histórico de Movimentação (Últimos 7 Dias)</h2>
+        <h2>📊 Histórico de Consumo - Últimos 7 Dias</h2>
         <div class="grid-graficos">
             <div class="card-grafico"><h4>Segunda-feira</h4><div class="canvas-container"><canvas id="chart1"></canvas></div></div>
             <div class="card-grafico"><h4>Terça-feira</h4><div class="canvas-container"><canvas id="chart2"></canvas></div></div>
@@ -248,81 +274,323 @@
             <div class="card-grafico"><h4>Sábado</h4><div class="canvas-container"><canvas id="chart6"></canvas></div></div>
             <div class="card-grafico"><h4>Domingo</h4><div class="canvas-container"><canvas id="chart7"></canvas></div></div>
         </div>
+        <button class="btn btn-reset-simulacao" onclick="resetarSimulacao()">🔄 Resetar Simulação</button>
     </div>
 </div>
 
 <script>
     // ==========================================
-    // LÓGICA DE CONTROLE DOS RELÉS DE ALIMENTAÇÃO
+    // VARIÁVEIS GLOBAIS
     // ==========================================
     
-    // Recupera o carimbo de data/hora final armazenado ou inicia zerado (Desligado)
     let tempos = {
         Bomba: localStorage.getItem('tempoBomba') ? parseInt(localStorage.getItem('tempoBomba')) : 0,
         Concessionaria: localStorage.getItem('tempoConcessionaria') ? parseInt(localStorage.getItem('tempoConcessionaria')) : 0
     };
-
-    // Adiciona tempo ao relé selecionado. Se já estiver ligado, acumula o tempo restante.
+    
+    // Dados simulados dos níveis das caixas d'água (0-100%)
+    let niveis = {
+        cozinha: 75,
+        casa: 90
+    };
+    
+    // Histórico simulado de consumo (últimos 7 dias, 8 medições por dia)
+    let historicoConsumo = {};
+    let charts = {};
+    
+    // Horários das medições (3 em 3 horas)
+    const horarios = ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
+    const diasSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+    
+    // ==========================================
+    // FUNÇÕES DE SIMULAÇÃO DE DADOS
+    // ==========================================
+    
+    // Gera dados realistas de consumo para um dia específico
+    function gerarConsumoDia(dia) {
+        let dados = [];
+        let baseConsumo = 1000; // litros base
+        
+        // Variação por dia da semana
+        let fatorDia = 1;
+        if (dia === 5 || dia === 6) fatorDia = 1.3; // Fim de semana consome mais
+        if (dia === 0) fatorDia = 0.8; // Segunda consome menos
+        
+        for (let i = 0; i < horarios.length; i++) {
+            let hora = i * 3;
+            let consumo;
+            
+            if (hora >= 6 && hora <= 9) consumo = 120 * fatorDia; // Pico matinal
+            else if (hora >= 18 && hora <= 21) consumo = 150 * fatorDia; // Pico noturno
+            else if (hora >= 12 && hora <= 15) consumo = 80 * fatorDia; // Médio
+            else consumo = 30 * fatorDia; // Baixo consumo noturno
+            
+            // Adiciona variação aleatória (±15%)
+            consumo = consumo * (0.85 + Math.random() * 0.3);
+            dados.push(Math.round(consumo));
+        }
+        return dados;
+    }
+    
+    // Inicializa o histórico com dados simulados
+    function inicializarHistorico() {
+        for (let i = 0; i < 7; i++) {
+            historicoConsumo[i] = gerarConsumoDia(i);
+        }
+    }
+    
+    // Atualiza os gráficos com os dados atuais
+    function inicializarGraficos() {
+        for (let i = 0; i < 7; i++) {
+            const canvas = document.getElementById(`chart${i+1}`);
+            if (!canvas) continue;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Se o gráfico já existe, destrói para recriar
+            if (charts[i]) {
+                charts[i].destroy();
+            }
+            
+            charts[i] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: horarios,
+                    datasets: [{
+                        label: 'Consumo (Litros)',
+                        data: historicoConsumo[i],
+                        borderColor: '#38bdf8',
+                        backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        pointBackgroundColor: '#38bdf8',
+                        pointBorderColor: '#0f172a',
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#94a3b8',
+                                font: { size: 10 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Consumo: ${context.parsed.y} L`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#334155' },
+                            title: {
+                                display: true,
+                                text: 'Litros',
+                                color: '#94a3b8'
+                            }
+                        },
+                        x: {
+                            grid: { color: '#334155' },
+                            ticks: { 
+                                color: '#94a3b8',
+                                font: { size: 9 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+    
+    // Simula o consumo de água baseado nos relés ativos
+    function simularConsumo() {
+        const agora = Date.now();
+        let bombaAtiva = tempos.Bomba > agora;
+        let concessionariaAtiva = tempos.Concessionaria > agora;
+        
+        // Se alguma fonte está ativa, enche as caixas
+        if (bombaAtiva || concessionariaAtiva) {
+            let vazao = 0;
+            if (bombaAtiva && concessionariaAtiva) vazao = 15;
+            else if (bombaAtiva) vazao = 8;
+            else if (concessionariaAtiva) vazao = 12;
+            
+            niveis.cozinha = Math.min(100, niveis.cozinha + vazao * 0.05);
+            niveis.casa = Math.min(100, niveis.casa + vazao * 0.07);
+        }
+        
+        // Consumo normal das caixas (uso doméstico)
+        let consumoMomentaneo = Math.random() * 3 + 2;
+        niveis.cozinha = Math.max(0, niveis.cozinha - consumoMomentaneo * 0.08);
+        niveis.casa = Math.max(0, niveis.casa - consumoMomentaneo * 0.12);
+        
+        // Atualiza display
+        atualizarDisplayNiveis();
+        verificarAlertas();
+        
+        // Registra o consumo no gráfico do dia atual (simula dados em tempo real)
+        const diaAtual = new Date().getDay();
+        const horaAtual = new Date().getHours();
+        const indiceHora = Math.floor(horaAtual / 3);
+        
+        if (historicoConsumo[diaAtual] && indiceHora < horarios.length) {
+            // Adiciona pequenas variações em tempo real
+            let consumoReal = historicoConsumo[diaAtual][indiceHora];
+            consumoReal += (Math.random() - 0.5) * 10;
+            consumoReal = Math.max(0, Math.min(200, consumoReal));
+            
+            if (charts[diaAtual]) {
+                charts[diaAtual].data.datasets[0].data[indiceHora] = Math.round(consumoReal);
+                charts[diaAtual].update('none');
+            }
+        }
+    }
+    
+    // Atualiza a interface dos níveis das caixas d'água
+    function atualizarDisplayNiveis() {
+        const aguaCozinha = document.getElementById('agua-cozinha');
+        const percentCozinha = document.getElementById('percent-cozinha');
+        const aguaCasa = document.getElementById('agua-casa');
+        const percentCasa = document.getElementById('percent-casa');
+        
+        if (aguaCozinha) aguaCozinha.style.height = `${niveis.cozinha}%`;
+        if (percentCozinha) percentCozinha.innerText = `${Math.round(niveis.cozinha)}%`;
+        if (aguaCasa) aguaCasa.style.height = `${niveis.casa}%`;
+        if (percentCasa) percentCasa.innerText = `${Math.round(niveis.casa)}%`;
+    }
+    
+    // Verifica e exibe alertas de nível crítico
+    function verificarAlertas() {
+        const alertaDiv = document.getElementById('alertas');
+        if (!alertaDiv) return;
+        
+        let alertas = [];
+        if (niveis.cozinha < 20) alertas.push('⚠️ Caixa Cozinha com nível BAIXO!');
+        if (niveis.casa < 20) alertas.push('⚠️ Caixa Casa com nível BAIXO!');
+        if (niveis.cozinha > 95) alertas.push('✅ Caixa Cozinha com nível ALTO - Transbordamento iminente!');
+        if (niveis.casa > 95) alertas.push('✅ Caixa Casa com nível ALTO - Transbordamento iminente!');
+        
+        if (alertas.length > 0) {
+            alertaDiv.style.display = 'block';
+            alertaDiv.innerHTML = alertas.join('<br>');
+            alertaDiv.className = `alerta-nivel ${niveis.cozinha < 20 || niveis.casa < 20 ? 'alerta-baixo' : 'alerta-alto'}`;
+        } else {
+            alertaDiv.style.display = 'none';
+        }
+    }
+    
+    // Reset da simulação (volta aos valores iniciais)
+    function resetarSimulacao() {
+        niveis = {
+            cozinha: 75,
+            casa: 90
+        };
+        
+        // Reseta históricos
+        for (let i = 0; i < 7; i++) {
+            historicoConsumo[i] = gerarConsumoDia(i);
+        }
+        
+        atualizarDisplayNiveis();
+        inicializarGraficos();
+        verificarAlertas();
+        
+        // Feedback visual
+        const btn = event.target;
+        const textoOriginal = btn.innerText;
+        btn.innerText = '✅ Resetado!';
+        setTimeout(() => {
+            btn.innerText = textoOriginal;
+        }, 2000);
+    }
+    
+    // ==========================================
+    // LÓGICA DE CONTROLE DOS RELÉS
+    // ==========================================
+    
     function adicionarTempo(tipo, minutos) {
         const agora = Date.now();
         let base = (tempos[tipo] > agora) ? tempos[tipo] : agora;
         tempos[tipo] = base + (minutos * 60 * 1000);
-  localStorage.setItem('tempo' + tipo, tempos[tipo]); // Salva para não perder ao atualizar a aba
-  atualizarPainel();
-}
-
-// Desliga forçadamente a fonte de alimentação correspondente
-function desligar(tipo) {
-  tempos[tipo] = 0;
-  localStorage.setItem('tempo' + tipo, 0);
-  atualizarPainel();
-}
-
-// Transforma milissegundos em string legível: exibe Dias (d) e Horas (h) apenas se necessário
-function formatarTempoExtenso(tempoFim) {
-  const agora = Date.now();
-  if (tempoFim <= agora) return "Desligado";
-
-  let segundosTotais = Math.floor((tempoFim - agora) / 1000);
-  const dias = Math.floor(segundosTotais / 86400);
-  segundosTotais %= 86400;
-
-  const horas = Math.floor(segundosTotais / 3600);
-  segundosTotais %= 3600;
-
-  const minutos = Math.floor(segundosTotais / 60);
-  const segundos = segundosTotais % 60;
-
-  let retorno = "";
-  if (dias > 0) retorno += (dias < 10 ? "0" + dias : dias) + "d ";
-  if (horas > 0 || dias > 0) retorno += (horas < 10 ? "0" + horas : horas) + "h ";
-  retorno += (minutos < 10 ? "0" + minutos : minutos) + "m ";
-  retorno += (segundos < 10 ? "0" + segundos : segundos) + "s";
-
-  return retorno;
-}
-
-// Atualiza os displays visuais dos relés na tela do navegador
-function atualizarPainel() {
-  ['Bomba', 'Concessionaria'].forEach(tipo => {
-    const display = document.getElementById(`display-${tipo.toLowerCase()}`);
-    const formatado = formatarTempoExtenso(tempos[tipo]);
-    display.innerText = formatado;
-
-    // Altera dinamicamente a cor da fonte: Vermelho (Inativo) ou Verde (Alimentando)
-    display.style.color = (formatado === "Desligado") ? "#ef4444" : "#4ade80";
-  });
-}
-
-// Loop interno do navegador: Executa a contagem regressiva a cada 1 segundo (1000ms)
-setInterval(atualizarPainel, 1000);
-atualizarPainel();
-
-// ==========================================
-// CONFIGURAÇÃO DOS GRÁFICOS DOS RESERVATÓRIOS
-// ==========================================
-
-// Eixo X (Linha do Tempo): Leituras agendadas de 3 em 3 horas para capturar as flutuações do dia
-const rotasHoras = ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
-
-// Banco de Dados Temporário preenchido com
+        localStorage.setItem('tempo' + tipo, tempos[tipo]);
+        atualizarPainel();
+    }
+    
+    function desligar(tipo) {
+        tempos[tipo] = 0;
+        localStorage.setItem('tempo' + tipo, 0);
+        atualizarPainel();
+    }
+    
+    function formatarTempoExtenso(tempoFim) {
+        const agora = Date.now();
+        if (tempoFim <= agora) return "Desligado";
+        
+        let segundosTotais = Math.floor((tempoFim - agora) / 1000);
+        const dias = Math.floor(segundosTotais / 86400);
+        segundosTotais %= 86400;
+        const horas = Math.floor(segundosTotais / 3600);
+        segundosTotais %= 3600;
+        const minutos = Math.floor(segundosTotais / 60);
+        const segundos = segundosTotais % 60;
+        
+        let retorno = "";
+        if (dias > 0) retorno += `${dias}d `;
+        if (horas > 0 || dias > 0) retorno += `${horas.toString().padStart(2, '0')}h `;
+        retorno += `${minutos.toString().padStart(2, '0')}m `;
+        retorno += `${segundos.toString().padStart(2, '0')}s`;
+        
+        return retorno;
+    }
+    
+    function atualizarPainel() {
+        ['Bomba', 'Concessionaria'].forEach(tipo => {
+            const display = document.getElementById(`display-${tipo.toLowerCase()}`);
+            if (display) {
+                const formatado = formatarTempoExtenso(tempos[tipo]);
+                display.innerText = formatado;
+                display.style.color = (formatado === "Desligado") ? "#ef4444" : "#4ade80";
+            }
+        });
+    }
+    
+    // ==========================================
+    // INICIALIZAÇÃO E LOOP PRINCIPAL
+    // ==========================================
+    
+    // Inicializa tudo
+    inicializarHistorico();
+    inicializarGraficos();
+    atualizarDisplayNiveis();
+    verificarAlertas();
+    
+    // Loop de simulação (atualiza a cada 2 segundos)
+    setInterval(() => {
+        simularConsumo();
+        atualizarPainel();
+    }, 2000);
+    
+    // Loop dos relés (atualiza a cada segundo)
+    setInterval(atualizarPainel, 1000);
+    
+    // Adiciona evento para salvar estado antes de fechar
+    window.addEventListener('beforeunload', () => {
+        localStorage.setItem('tempoBomba', tempos.Bomba);
+        localStorage.setItem('tempoConcessionaria', tempos.Concessionaria);
+    });
+    
+    console.log('✅ Sistema inicializado em MODO SIMULAÇÃO');
+    console.log('📊 Gráficos:', Object.keys(charts).length, 'criados');
+    console.log('💧 Níveis iniciais:', niveis);
+</script>
+</body>
+</html>
