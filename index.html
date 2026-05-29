@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BOIATO Web Control Pro</title>
-    <!-- Biblioteca Chart.js para gráficos modernos -->
+    <!-- Biblioteca Chart.js: Usada para renderizar os gráficos de histórico sem precisar de processamento no ESP -->
     <script src="https://jsdelivr.net"></script>
     <style>
+        /* --- ESTILIZAÇÃO VISUAL (INTERFACE DO USUÁRIO) --- */
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
             text-align: center;
-            background: #0f111a;
+            background: #0f111a; /* Fundo ultra-escuro para economia de energia e estética industrial */
             color: #e2e8f0;
             margin: 0;
             padding: 20px;
@@ -30,7 +31,7 @@
             margin-bottom: 30px;
             font-size: 14px;
         }
-        /* Grid dos Painéis Superiores */
+        /* Grid estrutural para os cartões de alimentação (Bomba e Concessionária) */
         .grid-topo {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -53,6 +54,7 @@
             font-size: 22px;
             letter-spacing: 0.5px;
         }
+        /* Display digital do cronômetro regressivo dos relés */
         .timer {
             font-weight: 700;
             font-size: 2em;
@@ -93,7 +95,7 @@
         .btn-off:hover {
             background: #dc2626;
         }
-        /* Quadro Unificado de Níveis dos Reservatórios */
+        /* Painel unificado para exibição do volume atual das caixas d'água */
         .card-niveis {
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             padding: 25px;
@@ -119,6 +121,7 @@
             align-items: center;
             width: 140px;
         }
+        /* Desenho gráfico do tanque da caixa d'água via CSS */
         .tanque-visual {
             width: 80px;
             height: 120px;
@@ -129,6 +132,7 @@
             overflow: hidden;
             box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
         }
+        /* Efeito visual da água preenchendo o tanque */
         .agua {
             position: absolute;
             bottom: 0;
@@ -148,7 +152,6 @@
             color: #38bdf8;
             margin-top: 4px;
         }
-        /* Seção Histórico de Gráficos */
         .secao-graficos h2 {
             font-size: 24px;
             border-bottom: 2px solid #334155;
@@ -185,9 +188,9 @@
     <h1>BOIATO Web Control Pro</h1>
     <div class="sub-title">Painel Inteligente de Monitoramento e Relés</div>
 
-    <!-- SEÇÃO SUPERIOR: CONTROLE DOS RELÉS POR TEMPO -->
+    <!-- SEÇÃO 1: FONTES DE ALIMENTAÇÃO (DISPOSITIVOS ATUADORES) -->
     <div class="grid-topo">
-        <!-- Quadro 1: Controle da Bomba -->
+        <!-- Fonte de Alimentação A: Bomba Mecânica (Acionamento rápido por minutos) -->
         <div class="card">
             <h3>Controle da Bomba</h3>
             <p class="timer" id="display-bomba" style="color: #ef4444;">Desligado</p>
@@ -198,7 +201,7 @@
             </div>
         </div>
 
-        <!-- Quadro 2: Controle da Concessionária -->
+        <!-- Fonte de Alimentação B: Rede da Concessionária (Fluxo contínuo por longos períodos) -->
         <div class="card">
             <h3>Concessionária</h3>
             <p class="timer" id="display-concessionaria" style="color: #ef4444;">Desligado</p>
@@ -210,30 +213,30 @@
         </div>
     </div>
 
-    <!-- NOVO QUADRO EXCLUSIVO DE NÍVEIS DOS RESERVATÓRIOS -->
+    <!-- SEÇÃO 2: ARMAZENAMENTO / RESERVATÓRIOS (DESTINO DA ÁGUA) -->
     <div class="card-niveis">
         <h2>Nível dos Reservatórios Atual</h2>
         <div class="niveis-flex">
-            <!-- Sensor Cozinha -->
+            <!-- Caixa d'água Cozinha: Monitorada em tempo real -->
             <div class="tanque-wrapper">
                 <div class="tanque-visual">
                     <div class="agua" style="height: 75%;"></div>
                 </div>
-                <div class="tanque-label">Cozinha</div>
+                <div class="tanque-label">Caixa Cozinha</div>
                 <div class="tanque-percent">75%</div>
             </div>
-            <!-- Sensor Casa -->
+            <!-- Caixa d'água Casa Principal: Monitorada em tempo real -->
             <div class="tanque-wrapper">
                 <div class="tanque-visual">
                     <div class="agua" style="height: 90%;"></div>
                 </div>
-                <div class="tanque-label">Casa</div>
+                <div class="tanque-label">Caixa Casa</div>
                 <div class="tanque-percent">90%</div>
             </div>
         </div>
     </div>
 
-    <!-- SEÇÃO HISTÓRICO: 7 DIAS COM LEITURAS A CADA 3 HORAS -->
+    <!-- SEÇÃO 3: HISTÓRICO DE CONSUMO E COMPORTAMENTO DOS RESERVATORIOS -->
     <div class="secao-graficos">
         <h2>Histórico de Movimentação (Últimos 7 Dias)</h2>
         <div class="grid-graficos">
@@ -249,39 +252,18 @@
 </div>
 
 <script>
-    // --- LÓGICA DE GERENCIAMENTO DE RELE E CONTAGEM (DD/HH/MM/SS) ---
+    // ==========================================
+    // LÓGICA DE CONTROLE DOS RELÉS DE ALIMENTAÇÃO
+    // ==========================================
+    
+    // Recupera o carimbo de data/hora final armazenado ou inicia zerado (Desligado)
     let tempos = {
         Bomba: localStorage.getItem('tempoBomba') ? parseInt(localStorage.getItem('tempoBomba')) : 0,
         Concessionaria: localStorage.getItem('tempoConcessionaria') ? parseInt(localStorage.getItem('tempoConcessionaria')) : 0
     };
 
+    // Adiciona tempo ao relé selecionado. Se já estiver ligado, acumula o tempo restante.
     function adicionarTempo(tipo, minutos) {
         const agora = Date.now();
         let base = (tempos[tipo] > agora) ? tempos[tipo] : agora;
         tempos[tipo] = base + (minutos * 60 * 1000);
-        localStorage.setItem('tempo' + tipo, tempos[tipo]);
-        atualizarPainel();
-    }
-
-    function desligar(tipo) {
-        tempos[tipo] = 0;
-        localStorage.setItem('tempo' + tipo, 0);
-        atualizarPainel();
-    }
-
-    // Formata milissegundos restantes para o padrão dd:hh:mm:ss dinamicamente
-    function formatarTempoExtenso(tempoFim) {
-        const agora = Date.now();
-        if (tempoFim <= agora) return "Desligado";
-        
-        let segundosTotais = Math.floor((tempoFim - agora) / 1000);
-        
-        const dias = Math.floor(segundosTotais / 86400);
-        segundosTotais %= 86400;
-        const horas = Math.floor(segundosTotais / 3600);
-        segundosTotais %= 3600;
-        const minutos = Math.floor(segundosTotais / 60);
-        const segundos = segundosTotais % 60;
-
-        let retorno = "";
-        if (dias > 0) retorno += (dias < 10 ? "0" + dias : dias) + "d ";
