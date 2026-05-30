@@ -261,23 +261,25 @@
         </div>
     </div>
 
-    <!-- SEÇÃO 2: ARMAZENAMENTO / RESERVATÓRIOS -->
+    <!-- SEÇÃO 2: ARMAZENAMENTO / RESERVATÓRIOS (CASA e COZINHA invertidos) -->
     <div class="card-niveis">
         <h2>💧 Nível dos Reservatórios</h2>
         <div class="niveis-flex">
-            <div class="tanque-wrapper">
-                <div class="tanque-visual">
-                    <div class="agua" id="agua-cozinha" style="height: 75%;"></div>
-                </div>
-                <div class="tanque-label">Cozinha</div>
-                <div class="tanque-percent" id="percent-cozinha">75%</div>
-            </div>
+            <!-- Primeiro: Casa -->
             <div class="tanque-wrapper">
                 <div class="tanque-visual">
                     <div class="agua" id="agua-casa" style="height: 90%;"></div>
                 </div>
                 <div class="tanque-label">Casa</div>
                 <div class="tanque-percent" id="percent-casa">90%</div>
+            </div>
+            <!-- Segundo: Cozinha -->
+            <div class="tanque-wrapper">
+                <div class="tanque-visual">
+                    <div class="agua" id="agua-cozinha" style="height: 75%;"></div>
+                </div>
+                <div class="tanque-label">Cozinha</div>
+                <div class="tanque-percent" id="percent-cozinha">75%</div>
             </div>
         </div>
         <div id="alertas" class="alerta-nivel" style="display: none;"></div>
@@ -303,19 +305,23 @@
     
     // Dados simulados dos níveis das caixas d'água (0-100%)
     let niveis = {
-        cozinha: 75,
-        casa: 90
+        casa: 90,
+        cozinha: 75
     };
     
     // Histórico simulado de consumo (últimos 7 dias, 8 medições por dia)
     let historicoConsumo = {};
-    let historicoCozinha = {};
     let historicoCasa = {};
+    let historicoCozinha = {};
     let charts = {};
     
     // Horários das medições (3 em 3 horas)
     const horarios = ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
     const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    
+    // Capacidade máxima dos reservatórios em litros
+    const capacidadeCasa = 1500;
+    const capacidadeCozinha = 800;
     
     // ==========================================
     // FUNÇÕES DE SIMULAÇÃO DE DADOS
@@ -345,7 +351,13 @@
             
             // Adiciona variação aleatória (±15%)
             consumo = consumo * (0.85 + Math.random() * 0.3);
-            dados.push(Math.round(consumo));
+            
+            // Converte para percentual do reservatório
+            let capacidade = reservatorio === 'casa' ? capacidadeCasa : capacidadeCozinha;
+            let percentual = (consumo / capacidade) * 100;
+            percentual = Math.min(100, Math.max(0, percentual));
+            
+            dados.push(Math.round(percentual));
         }
         return dados;
     }
@@ -353,11 +365,11 @@
     // Inicializa o histórico com dados simulados
     function inicializarHistorico() {
         for (let i = 0; i < 7; i++) {
-            historicoCozinha[i] = gerarConsumoDia(i, 'cozinha');
             historicoCasa[i] = gerarConsumoDia(i, 'casa');
+            historicoCozinha[i] = gerarConsumoDia(i, 'cozinha');
             historicoConsumo[i] = {
-                cozinha: historicoCozinha[i],
-                casa: historicoCasa[i]
+                casa: historicoCasa[i],
+                cozinha: historicoCozinha[i]
             };
         }
     }
@@ -407,12 +419,12 @@
                 </div>
                 <div class="legenda-cores">
                     <div class="legenda-item">
-                        <div class="cor-legenda" style="background: #3b82f6;"></div>
-                        <span>Cozinha</span>
-                    </div>
-                    <div class="legenda-item">
                         <div class="cor-legenda" style="background: #10b981;"></div>
                         <span>Casa</span>
+                    </div>
+                    <div class="legenda-item">
+                        <div class="cor-legenda" style="background: #3b82f6;"></div>
+                        <span>Cozinha</span>
                     </div>
                 </div>
             `;
@@ -429,19 +441,6 @@
                     labels: horarios,
                     datasets: [
                         {
-                            label: 'Cozinha',
-                            data: historicoConsumo[diaIndex].cozinha,
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.05)',
-                            borderWidth: 2,
-                            tension: 0.3,
-                            fill: false,
-                            pointBackgroundColor: '#3b82f6',
-                            pointBorderColor: '#0f172a',
-                            pointRadius: 3,
-                            pointHoverRadius: 5
-                        },
-                        {
                             label: 'Casa',
                             data: historicoConsumo[diaIndex].casa,
                             borderColor: '#10b981',
@@ -450,6 +449,19 @@
                             tension: 0.3,
                             fill: false,
                             pointBackgroundColor: '#10b981',
+                            pointBorderColor: '#0f172a',
+                            pointRadius: 3,
+                            pointHoverRadius: 5
+                        },
+                        {
+                            label: 'Cozinha',
+                            data: historicoConsumo[diaIndex].cozinha,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: false,
+                            pointBackgroundColor: '#3b82f6',
                             pointBorderColor: '#0f172a',
                             pointRadius: 3,
                             pointHoverRadius: 5
@@ -466,7 +478,7 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return `${context.dataset.label}: ${context.parsed.y} L`;
+                                    return `${context.dataset.label}: ${context.parsed.y}%`;
                                 }
                             }
                         }
@@ -474,14 +486,15 @@
                     scales: {
                         y: {
                             beginAtZero: true,
+                            max: 100,
                             grid: { color: '#334155' },
                             title: {
-                                display: false // Remove o título "Litros"
+                                display: false // Remove qualquer título
                             },
                             ticks: {
                                 color: '#94a3b8',
                                 callback: function(value) {
-                                    return value + 'L';
+                                    return value + '%';
                                 }
                             }
                         },
@@ -512,14 +525,14 @@
             else if (bombaAtiva) vazao = 8;
             else if (concessionariaAtiva) vazao = 12;
             
-            niveis.cozinha = Math.min(100, niveis.cozinha + vazao * 0.05);
-            niveis.casa = Math.min(100, niveis.casa + vazao * 0.07);
+            niveis.casa = Math.min(100, niveis.casa + vazao * 0.05);
+            niveis.cozinha = Math.min(100, niveis.cozinha + vazao * 0.07);
         }
         
         // Consumo normal das caixas (uso doméstico)
         let consumoMomentaneo = Math.random() * 3 + 2;
-        niveis.cozinha = Math.max(0, niveis.cozinha - consumoMomentaneo * 0.08);
         niveis.casa = Math.max(0, niveis.casa - consumoMomentaneo * 0.12);
+        niveis.cozinha = Math.max(0, niveis.cozinha - consumoMomentaneo * 0.08);
         
         // Atualiza display
         atualizarDisplayNiveis();
@@ -532,14 +545,14 @@
         const indiceHora = Math.floor(horaAtual / 3);
         
         if (historicoConsumo[diaSemanaAtual] && indiceHora < horarios.length) {
-            // Adiciona pequenas variações em tempo real
-            let consumoRealCozinha = historicoConsumo[diaSemanaAtual].cozinha[indiceHora];
-            let consumoRealCasa = historicoConsumo[diaSemanaAtual].casa[indiceHora];
+            // Adiciona pequenas variações em tempo real (convertendo nível atual para percentual de consumo)
+            let consumoPercentualCasa = (100 - niveis.casa) * 0.5;
+            let consumoPercentualCozinha = (100 - niveis.cozinha) * 0.5;
             
-            consumoRealCozinha += (Math.random() - 0.5) * 8;
-            consumoRealCasa += (Math.random() - 0.5) * 12;
-            consumoRealCozinha = Math.max(0, Math.min(200, consumoRealCozinha));
-            consumoRealCasa = Math.max(0, Math.min(300, consumoRealCasa));
+            consumoPercentualCasa += (Math.random() - 0.5) * 5;
+            consumoPercentualCozinha += (Math.random() - 0.5) * 5;
+            consumoPercentualCasa = Math.max(0, Math.min(100, consumoPercentualCasa));
+            consumoPercentualCozinha = Math.max(0, Math.min(100, consumoPercentualCozinha));
             
             // Encontra qual gráfico está mostrando o dia atual
             const ordemDias = getOrdemDias();
@@ -547,8 +560,8 @@
                 const diasAtras = ordemDias[idx];
                 const diaIndex = (dataAtual.getDay() - diasAtras + 7) % 7;
                 if (diaIndex === diaSemanaAtual && charts[idx]) {
-                    charts[idx].data.datasets[0].data[indiceHora] = Math.round(consumoRealCozinha);
-                    charts[idx].data.datasets[1].data[indiceHora] = Math.round(consumoRealCasa);
+                    charts[idx].data.datasets[0].data[indiceHora] = Math.round(consumoPercentualCasa);
+                    charts[idx].data.datasets[1].data[indiceHora] = Math.round(consumoPercentualCozinha);
                     charts[idx].update('none');
                     break;
                 }
@@ -558,15 +571,15 @@
     
     // Atualiza a interface dos níveis das caixas d'água
     function atualizarDisplayNiveis() {
-        const aguaCozinha = document.getElementById('agua-cozinha');
-        const percentCozinha = document.getElementById('percent-cozinha');
         const aguaCasa = document.getElementById('agua-casa');
         const percentCasa = document.getElementById('percent-casa');
+        const aguaCozinha = document.getElementById('agua-cozinha');
+        const percentCozinha = document.getElementById('percent-cozinha');
         
-        if (aguaCozinha) aguaCozinha.style.height = `${niveis.cozinha}%`;
-        if (percentCozinha) percentCozinha.innerText = `${Math.round(niveis.cozinha)}%`;
         if (aguaCasa) aguaCasa.style.height = `${niveis.casa}%`;
         if (percentCasa) percentCasa.innerText = `${Math.round(niveis.casa)}%`;
+        if (aguaCozinha) aguaCozinha.style.height = `${niveis.cozinha}%`;
+        if (percentCozinha) percentCozinha.innerText = `${Math.round(niveis.cozinha)}%`;
     }
     
     // Verifica e exibe alertas de nível crítico
@@ -575,15 +588,15 @@
         if (!alertaDiv) return;
         
         let alertas = [];
-        if (niveis.cozinha < 20) alertas.push('⚠️ Cozinha com nível BAIXO!');
         if (niveis.casa < 20) alertas.push('⚠️ Casa com nível BAIXO!');
-        if (niveis.cozinha > 95) alertas.push('✅ Cozinha com nível ALTO - Transbordamento iminente!');
+        if (niveis.cozinha < 20) alertas.push('⚠️ Cozinha com nível BAIXO!');
         if (niveis.casa > 95) alertas.push('✅ Casa com nível ALTO - Transbordamento iminente!');
+        if (niveis.cozinha > 95) alertas.push('✅ Cozinha com nível ALTO - Transbordamento iminente!');
         
         if (alertas.length > 0) {
             alertaDiv.style.display = 'block';
             alertaDiv.innerHTML = alertas.join('<br>');
-            alertaDiv.className = `alerta-nivel ${niveis.cozinha < 20 || niveis.casa < 20 ? 'alerta-baixo' : 'alerta-alto'}`;
+            alertaDiv.className = `alerta-nivel ${niveis.casa < 20 || niveis.cozinha < 20 ? 'alerta-baixo' : 'alerta-alto'}`;
         } else {
             alertaDiv.style.display = 'none';
         }
@@ -592,17 +605,17 @@
     // Reset da simulação (volta aos valores iniciais)
     function resetarSimulacao() {
         niveis = {
-            cozinha: 75,
-            casa: 90
+            casa: 90,
+            cozinha: 75
         };
         
         // Reseta históricos
         for (let i = 0; i < 7; i++) {
-            historicoCozinha[i] = gerarConsumoDia(i, 'cozinha');
             historicoCasa[i] = gerarConsumoDia(i, 'casa');
+            historicoCozinha[i] = gerarConsumoDia(i, 'cozinha');
             historicoConsumo[i] = {
-                cozinha: historicoCozinha[i],
-                casa: historicoCasa[i]
+                casa: historicoCasa[i],
+                cozinha: historicoCozinha[i]
             };
         }
         
