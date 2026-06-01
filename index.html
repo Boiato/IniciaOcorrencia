@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BOIATO Web Control Pro - Simulação Completa</title>
-    <!-- Biblioteca Chart.js corrigida -->
+    <title>BOIATO Web Control Pro - Sistema Real</title>
+    <!-- Biblioteca Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* --- ESTILIZAÇÃO VISUAL (INTERFACE DO USUÁRIO) --- */
@@ -31,14 +31,25 @@
             margin-bottom: 30px;
             font-size: 14px;
         }
-        .status-simulacao {
+        .status-conexao {
             background: #334155;
             padding: 8px 15px;
             border-radius: 20px;
             font-size: 12px;
             display: inline-block;
             margin-bottom: 20px;
-            color: #fbbf24;
+        }
+        .status-conectado {
+            background: #10b981;
+            color: white;
+        }
+        .status-desconectado {
+            background: #ef4444;
+            color: white;
+        }
+        .status-conectando {
+            background: #f59e0b;
+            color: white;
         }
         .grid-topo {
             display: grid;
@@ -72,6 +83,12 @@
             border-radius: 8px;
             border: 1px solid #1e293b;
         }
+        .timer-ativo {
+            color: #4ade80;
+        }
+        .timer-inativo {
+            color: #ef4444;
+        }
         .btn-group {
             display: flex;
             gap: 10px;
@@ -101,6 +118,13 @@
         }
         .btn-off:hover {
             background: #dc2626;
+        }
+        .btn-limite {
+            background: #f59e0b;
+            color: #0f172a;
+        }
+        .btn-limite:hover {
+            background: #d97706;
         }
         .card-niveis {
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
@@ -221,13 +245,20 @@
             height: 16px;
             border-radius: 3px;
         }
-        .btn-reset-simulacao {
-            background: #f59e0b;
-            margin-top: 20px;
-            padding: 10px 20px;
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
         }
-        .btn-reset-simulacao:hover {
-            background: #d97706;
+        .info-ip {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 20px;
+        }
+        .max-tempo-alert {
+            font-size: 11px;
+            color: #f59e0b;
+            margin-top: 5px;
         }
     </style>
 </head>
@@ -235,51 +266,51 @@
 
 <div class="container">
     <h1>BOIATO Web Control Pro</h1>
-    <div class="sub-title">Painel Inteligente de Monitoramento e Relés</div>
-    <div class="status-simulacao">🔄 MODO SIMULAÇÃO ATIVO - Dados gerados automaticamente</div>
+    <div class="sub-title">Painel Inteligente de Monitoramento e Controle</div>
+    <div id="statusConexao" class="status-conexao status-conectando">🔄 Conectando ao ESP32...</div>
 
     <!-- SEÇÃO 1: FONTES DE ALIMENTAÇÃO (DISPOSITIVOS ATUADORES) -->
     <div class="grid-topo">
         <div class="card">
             <h3>🚰 Controle da Bomba</h3>
-            <p class="timer" id="display-bomba" style="color: #ef4444;">Desligado</p>
+            <p class="timer" id="display-bomba" class="timer-inativo">Desligado</p>
             <div class="btn-group">
-                <button class="btn" onclick="adicionarTempo('Bomba', 1)">+1 Min</button>
-                <button class="btn" onclick="adicionarTempo('Bomba', 15)">+15 Min</button>
-                <button class="btn btn-off" onclick="desligar('Bomba')">OFF</button>
+                <button class="btn" onclick="adicionarTempoBomba(1)">+1 Min</button>
+                <button class="btn" onclick="adicionarTempoBomba(15)">+15 Min</button>
+                <button class="btn" onclick="adicionarTempoBomba(60)">+1 Hora</button>
+                <button class="btn btn-off" onclick="desligarBomba()">OFF</button>
             </div>
+            <div class="max-tempo-alert">⏱️ Máximo 2 horas contínuas</div>
         </div>
 
         <div class="card">
             <h3>⚡ Concessionária</h3>
-            <p class="timer" id="display-concessionaria" style="color: #ef4444;">Desligado</p>
+            <p class="timer" id="display-concessionaria" class="timer-inativo">Desligado</p>
             <div class="btn-group">
-                <button class="btn" onclick="adicionarTempo('Concessionaria', 60)">+1 Hora</button>
-                <button class="btn" onclick="adicionarTempo('Concessionaria', 1440)">+1 Dia</button>
-                <button class="btn btn-off" onclick="desligar('Concessionaria')">OFF</button>
+                <button class="btn" onclick="adicionarTempoValvula(60)">+1 Hora</button>
+                <button class="btn" onclick="adicionarTempoValvula(1440)">+1 Dia</button>
+                <button class="btn btn-off" onclick="desligarValvula()">OFF</button>
             </div>
         </div>
     </div>
 
-    <!-- SEÇÃO 2: ARMAZENAMENTO / RESERVATÓRIOS (CASA e COZINHA invertidos) -->
+    <!-- SEÇÃO 2: ARMAZENAMENTO / RESERVATÓRIOS -->
     <div class="card-niveis">
         <h2>💧 Nível dos Reservatórios</h2>
         <div class="niveis-flex">
-            <!-- Primeiro: Casa -->
             <div class="tanque-wrapper">
                 <div class="tanque-visual">
-                    <div class="agua" id="agua-casa" style="height: 90%;"></div>
+                    <div class="agua" id="agua-casa" style="height: 0%;"></div>
                 </div>
                 <div class="tanque-label">Casa</div>
-                <div class="tanque-percent" id="percent-casa">90%</div>
+                <div class="tanque-percent" id="percent-casa">--%</div>
             </div>
-            <!-- Segundo: Cozinha -->
             <div class="tanque-wrapper">
                 <div class="tanque-visual">
-                    <div class="agua" id="agua-cozinha" style="height: 75%;"></div>
+                    <div class="agua" id="agua-cozinha" style="height: 0%;"></div>
                 </div>
                 <div class="tanque-label">Cozinha</div>
-                <div class="tanque-percent" id="percent-cozinha">75%</div>
+                <div class="tanque-percent" id="percent-cozinha">--%</div>
             </div>
         </div>
         <div id="alertas" class="alerta-nivel" style="display: none;"></div>
@@ -288,93 +319,370 @@
     <!-- SEÇÃO 3: HISTÓRICO DE CONSUMO -->
     <div class="secao-graficos">
         <h2>📊 Histórico de Consumo - Últimos 7 Dias</h2>
-        <div class="grid-graficos" id="graficos-container"></div>
-        <button class="btn btn-reset-simulacao" onclick="resetarSimulacao()">🔄 Resetar Simulação</button>
+        <div id="graficos-container" class="grid-graficos">
+            <div class="loading">Carregando histórico...</div>
+        </div>
     </div>
+    <div class="info-ip" id="infoIP">Aguardando conexão...</div>
 </div>
 
 <script>
     // ==========================================
-    // VARIÁVEIS GLOBAIS
+    // CONFIGURAÇÕES
     // ==========================================
     
+    let ESP32_IP = null;
+    let ws = null;
     let tempos = {
-        Bomba: localStorage.getItem('tempoBomba') ? parseInt(localStorage.getItem('tempoBomba')) : 0,
-        Concessionaria: localStorage.getItem('tempoConcessionaria') ? parseInt(localStorage.getItem('tempoConcessionaria')) : 0
+        Bomba: 0,
+        Concessionaria: 0
     };
     
-    // Dados simulados dos níveis das caixas d'água (0-100%)
     let niveis = {
-        casa: 90,
-        cozinha: 75
+        casa: 0,
+        cozinha: 0
     };
     
-    // Histórico simulado de consumo (últimos 7 dias, 8 medições por dia)
     let historicoConsumo = {};
     let historicoCasa = {};
     let historicoCozinha = {};
     let charts = {};
     
-    // Horários das medições (3 em 3 horas)
     const horarios = ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
     const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
     
-    // Capacidade máxima dos reservatórios em litros
-    const capacidadeCasa = 1500;
-    const capacidadeCozinha = 800;
-    
     // ==========================================
-    // FUNÇÕES DE SIMULAÇÃO DE DADOS
+    // FUNÇÕES DE DESCOBERTA DO ESP32
     // ==========================================
     
-    // Gera dados realistas de consumo para um dia específico (para cada reservatório)
-    function gerarConsumoDia(dia, reservatorio) {
-        let dados = [];
-        let baseConsumo = reservatorio === 'cozinha' ? 800 : 1200; // litros base
+    // Tenta encontrar o ESP32 na rede local
+    async function descobrirESP32() {
+        // Primeiro tenta o IP padrão (você pode ajustar conforme sua rede)
+        const possiveisIPs = [
+            '192.168.1.100',
+            '192.168.0.100',
+            '192.168.1.200',
+            '192.168.0.200',
+            localStorage.getItem('esp32_ip')  // IP salvo anteriormente
+        ].filter(ip => ip);
         
-        // Variação por dia da semana
-        let fatorDia = 1;
-        if (dia === 5 || dia === 6) fatorDia = 1.3; // Fim de semana consome mais
-        if (dia === 0) fatorDia = 0.8; // Segunda consome menos
-        
-        for (let i = 0; i < horarios.length; i++) {
-            let hora = i * 3;
-            let consumo;
-            
-            if (hora >= 6 && hora <= 9) consumo = 100 * fatorDia; // Pico matinal
-            else if (hora >= 18 && hora <= 21) consumo = 130 * fatorDia; // Pico noturno
-            else if (hora >= 12 && hora <= 15) consumo = 70 * fatorDia; // Médio
-            else consumo = 25 * fatorDia; // Baixo consumo noturno
-            
-            // Variação por reservatório
-            if (reservatorio === 'casa') consumo = consumo * 1.5;
-            
-            // Adiciona variação aleatória (±15%)
-            consumo = consumo * (0.85 + Math.random() * 0.3);
-            
-            // Converte para percentual do reservatório
-            let capacidade = reservatorio === 'casa' ? capacidadeCasa : capacidadeCozinha;
-            let percentual = (consumo / capacidade) * 100;
-            percentual = Math.min(100, Math.max(0, percentual));
-            
-            dados.push(Math.round(percentual));
+        for (const ip of possiveisIPs) {
+            try {
+                const response = await fetch(`http://${ip}/api/status`, {
+                    timeout: 2000,
+                    method: 'GET'
+                });
+                if (response.ok) {
+                    ESP32_IP = ip;
+                    localStorage.setItem('esp32_ip', ip);
+                    return true;
+                }
+            } catch(e) {
+                continue;
+            }
         }
-        return dados;
+        
+        // Se não encontrou, tenta mDNS (requer que o ESP32 esteja configurado com .local)
+        try {
+            const response = await fetch('http://boiato.local/api/status', { timeout: 2000 });
+            if (response.ok) {
+                ESP32_IP = 'boiato.local';
+                localStorage.setItem('esp32_ip', 'boiato.local');
+                return true;
+            }
+        } catch(e) {}
+        
+        return false;
     }
     
-    // Inicializa o histórico com dados simulados
-    function inicializarHistorico() {
-        for (let i = 0; i < 7; i++) {
-            historicoCasa[i] = gerarConsumoDia(i, 'casa');
-            historicoCozinha[i] = gerarConsumoDia(i, 'cozinha');
-            historicoConsumo[i] = {
-                casa: historicoCasa[i],
-                cozinha: historicoCozinha[i]
-            };
+    // ==========================================
+    // FUNÇÕES DE COMUNICAÇÃO COM ESP32
+    // ==========================================
+    
+    async function carregarDadosIniciais() {
+        if (!ESP32_IP) {
+            const encontrado = await descobrirESP32();
+            if (!encontrado) {
+                document.getElementById('statusConexao').innerHTML = '❌ ESP32 não encontrado na rede';
+                document.getElementById('statusConexao').className = 'status-conexao status-desconectado';
+                return false;
+            }
+        }
+        
+        document.getElementById('statusConexao').innerHTML = '📡 Conectado ao ESP32';
+        document.getElementById('statusConexao').className = 'status-conexao status-conectado';
+        document.getElementById('infoIP').innerHTML = `🌐 ESP32 IP: ${ESP32_IP}`;
+        
+        try {
+            // Busca status atual
+            const statusResponse = await fetch(`http://${ESP32_IP}/api/status`);
+            const dados = await statusResponse.json();
+            
+            niveis.casa = dados.casa;
+            niveis.cozinha = dados.cozinha;
+            atualizarDisplayNiveis();
+            
+            if (dados.bomba_ativa && dados.bomba_tempo > 0) {
+                tempos.Bomba = Date.now() + (dados.bomba_tempo * 1000);
+            } else {
+                tempos.Bomba = 0;
+            }
+            
+            if (dados.valvula_ativa && dados.valvula_tempo > 0) {
+                tempos.Concessionaria = Date.now() + (dados.valvula_tempo * 1000);
+            } else {
+                tempos.Concessionaria = 0;
+            }
+            atualizarPainel();
+            
+            // Busca histórico
+            const histResponse = await fetch(`http://${ESP32_IP}/api/historico`);
+            const historico = await histResponse.json();
+            
+            for (let i = 0; i < historico.length && i < 7; i++) {
+                if (historico[i].casa && historico[i].cozinha) {
+                    historicoCasa[i] = historico[i].casa;
+                    historicoCozinha[i] = historico[i].cozinha;
+                    historicoConsumo[i] = {
+                        casa: historico[i].casa,
+                        cozinha: historico[i].cozinha
+                    };
+                } else {
+                    // Fallback para dados vazios
+                    historicoCasa[i] = Array(8).fill(0);
+                    historicoCozinha[i] = Array(8).fill(0);
+                    historicoConsumo[i] = {
+                        casa: Array(8).fill(0),
+                        cozinha: Array(8).fill(0)
+                    };
+                }
+            }
+            
+            inicializarGraficos();
+            conectarWebSocket();
+            return true;
+            
+        } catch (error) {
+            console.error('Erro ao carregar dados:', error);
+            document.getElementById('statusConexao').innerHTML = '⚠️ Erro de comunicação';
+            document.getElementById('statusConexao').className = 'status-conexao status-desconectado';
+            return false;
         }
     }
     
-    // Obtém a data no formato dd/mmm
+    function conectarWebSocket() {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.close();
+        }
+        
+        ws = new WebSocket(`ws://${ESP32_IP}:81`);
+        
+        ws.onopen = function() {
+            console.log('WebSocket conectado');
+            document.getElementById('statusConexao').innerHTML = '✅ Conectado em Tempo Real';
+            document.getElementById('statusConexao').className = 'status-conexao status-conectado';
+        };
+        
+        ws.onmessage = function(event) {
+            try {
+                const dados = JSON.parse(event.data);
+                
+                // Atualiza níveis
+                if (dados.casa !== undefined) niveis.casa = dados.casa;
+                if (dados.cozinha !== undefined) niveis.cozinha = dados.cozinha;
+                atualizarDisplayNiveis();
+                verificarAlertas();
+                
+                // Atualiza timers
+                if (dados.bomba_ativa && dados.bomba_tempo > 0) {
+                    tempos.Bomba = Date.now() + (dados.bomba_tempo * 1000);
+                } else {
+                    tempos.Bomba = 0;
+                }
+                
+                if (dados.valvula_ativa && dados.valvula_tempo > 0) {
+                    tempos.Concessionaria = Date.now() + (dados.valvula_tempo * 1000);
+                } else {
+                    tempos.Concessionaria = 0;
+                }
+                
+                atualizarPainel();
+                
+            } catch(e) {
+                console.error('Erro ao processar WebSocket:', e);
+            }
+        };
+        
+        ws.onerror = function(error) {
+            console.error('WebSocket error:', error);
+            document.getElementById('statusConexao').innerHTML = '🔌 Reconectando...';
+            document.getElementById('statusConexao').className = 'status-conexao status-conectando';
+        };
+        
+        ws.onclose = function() {
+            console.log('WebSocket desconectado');
+            setTimeout(() => {
+                if (ESP32_IP) conectarWebSocket();
+            }, 5000);
+        };
+    }
+    
+    // ==========================================
+    // FUNÇÕES DE CONTROLE
+    // ==========================================
+    
+    const MAX_BOMBA_SEGUNDOS = 7200; // 2 horas em segundos
+    
+    async function enviarComando(comando) {
+        if (!ESP32_IP) return false;
+        
+        try {
+            const response = await fetch(`http://${ESP32_IP}/api/control`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    senha: '1981',
+                    ...comando
+                })
+            });
+            
+            if (response.ok) {
+                console.log('Comando enviado:', comando);
+                return true;
+            } else {
+                console.error('Erro no comando:', response.status);
+                return false;
+            }
+        } catch (error) {
+            console.error('Erro ao enviar comando:', error);
+            return false;
+        }
+    }
+    
+    async function adicionarTempoBomba(minutos) {
+        const segundosAdicionais = minutos * 60;
+        
+        // Verifica limite máximo de 2 horas
+        let tempoAtual = 0;
+        if (tempos.Bomba > Date.now()) {
+            tempoAtual = Math.floor((tempos.Bomba - Date.now()) / 1000);
+        }
+        
+        const novoTempo = tempoAtual + segundosAdicionais;
+        
+        if (novoTempo > MAX_BOMBA_SEGUNDOS) {
+            alert(`A bomba não pode ultrapassar 2 horas contínuas!\nTempo atual: ${formatarSegundos(tempoAtual)}\nMáximo permitido: 2 horas`);
+            return;
+        }
+        
+        await enviarComando({
+            bomba: 'add',
+            minutos: minutos
+        });
+    }
+    
+    async function desligarBomba() {
+        await enviarComando({
+            bomba: 'desligar'
+        });
+    }
+    
+    async function adicionarTempoValvula(minutos) {
+        await enviarComando({
+            valvula: 'add',
+            minutos: minutos
+        });
+    }
+    
+    async function desligarValvula() {
+        await enviarComando({
+            valvula: 'desligar'
+        });
+    }
+    
+    function formatarSegundos(segundos) {
+        const h = Math.floor(segundos / 3600);
+        const m = Math.floor((segundos % 3600) / 60);
+        const s = segundos % 60;
+        if (h > 0) return `${h}h ${m}m ${s}s`;
+        if (m > 0) return `${m}m ${s}s`;
+        return `${s}s`;
+    }
+    
+    function formatarTempoExtenso(tempoFim) {
+        const agora = Date.now();
+        if (tempoFim <= agora) return "Desligado";
+        
+        let segundosTotais = Math.floor((tempoFim - agora) / 1000);
+        const dias = Math.floor(segundosTotais / 86400);
+        segundosTotais %= 86400;
+        const horas = Math.floor(segundosTotais / 3600);
+        segundosTotais %= 3600;
+        const minutos = Math.floor(segundosTotais / 60);
+        const segundos = segundosTotais % 60;
+        
+        let retorno = "";
+        if (dias > 0) retorno += `${dias}d `;
+        if (horas > 0 || dias > 0) retorno += `${horas.toString().padStart(2, '0')}h `;
+        retorno += `${minutos.toString().padStart(2, '0')}m `;
+        retorno += `${segundos.toString().padStart(2, '0')}s`;
+        
+        return retorno;
+    }
+    
+    function atualizarPainel() {
+        const displayBomba = document.getElementById('display-bomba');
+        const displayConcessionaria = document.getElementById('display-concessionaria');
+        
+        const tempoBomba = formatarTempoExtenso(tempos.Bomba);
+        const tempoValvula = formatarTempoExtenso(tempos.Concessionaria);
+        
+        if (displayBomba) {
+            displayBomba.innerText = tempoBomba;
+            displayBomba.className = tempoBomba === "Desligado" ? "timer timer-inativo" : "timer timer-ativo";
+        }
+        
+        if (displayConcessionaria) {
+            displayConcessionaria.innerText = tempoValvula;
+            displayConcessionaria.className = tempoValvula === "Desligado" ? "timer timer-inativo" : "timer timer-ativo";
+        }
+    }
+    
+    // ==========================================
+    // FUNÇÕES DA INTERFACE
+    // ==========================================
+    
+    function atualizarDisplayNiveis() {
+        const aguaCasa = document.getElementById('agua-casa');
+        const percentCasa = document.getElementById('percent-casa');
+        const aguaCozinha = document.getElementById('agua-cozinha');
+        const percentCozinha = document.getElementById('percent-cozinha');
+        
+        if (aguaCasa) aguaCasa.style.height = `${niveis.casa}%`;
+        if (percentCasa) percentCasa.innerText = `${Math.round(niveis.casa)}%`;
+        if (aguaCozinha) aguaCozinha.style.height = `${niveis.cozinha}%`;
+        if (percentCozinha) percentCozinha.innerText = `${Math.round(niveis.cozinha)}%`;
+    }
+    
+    function verificarAlertas() {
+        const alertaDiv = document.getElementById('alertas');
+        if (!alertaDiv) return;
+        
+        let alertas = [];
+        if (niveis.casa < 20) alertas.push('⚠️ Casa com nível BAIXO!');
+        if (niveis.cozinha < 20) alertas.push('⚠️ Cozinha com nível BAIXO!');
+        if (niveis.casa > 95) alertas.push('✅ Casa com nível ALTO - Transbordamento iminente!');
+        if (niveis.cozinha > 95) alertas.push('✅ Cozinha com nível ALTO - Transbordamento iminente!');
+        
+        if (alertas.length > 0) {
+            alertaDiv.style.display = 'block';
+            alertaDiv.innerHTML = alertas.join('<br>');
+            alertaDiv.className = `alerta-nivel ${niveis.casa < 20 || niveis.cozinha < 20 ? 'alerta-baixo' : 'alerta-alto'}`;
+        } else {
+            alertaDiv.style.display = 'none';
+        }
+    }
+    
     function getDataFormatada(diasAtras) {
         const data = new Date();
         data.setDate(data.getDate() - diasAtras);
@@ -384,7 +692,6 @@
         return `${dia}/${mes}`;
     }
     
-    // Obtém a ordem dos dias (do mais recente para o mais antigo)
     function getOrdemDias() {
         const ordem = [];
         for (let i = 1; i <= 7; i++) {
@@ -393,7 +700,6 @@
         return ordem;
     }
     
-    // Atualiza os gráficos com os dados atuais
     function inicializarGraficos() {
         const container = document.getElementById('graficos-container');
         if (!container) return;
@@ -409,7 +715,9 @@
             const dataLabel = getDataFormatada(diasAtras);
             const nomeDia = diasSemana[diaIndex];
             
-            // Cria o card do gráfico
+            const dadosCasa = historicoCasa[diaIndex] || Array(8).fill(0);
+            const dadosCozinha = historicoCozinha[diaIndex] || Array(8).fill(0);
+            
             const card = document.createElement('div');
             card.className = 'card-grafico';
             card.innerHTML = `
@@ -442,7 +750,7 @@
                     datasets: [
                         {
                             label: 'Casa',
-                            data: historicoConsumo[diaIndex].casa,
+                            data: dadosCasa,
                             borderColor: '#10b981',
                             backgroundColor: 'rgba(16, 185, 129, 0.05)',
                             borderWidth: 2,
@@ -455,7 +763,7 @@
                         },
                         {
                             label: 'Cozinha',
-                            data: historicoConsumo[diaIndex].cozinha,
+                            data: dadosCozinha,
                             borderColor: '#3b82f6',
                             backgroundColor: 'rgba(59, 130, 246, 0.05)',
                             borderWidth: 2,
@@ -472,9 +780,7 @@
                     responsive: true,
                     maintainAspectRatio: true,
                     plugins: {
-                        legend: {
-                            display: false // Remove a legenda padrão do Chart.js
-                        },
+                        legend: { display: false },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -488,9 +794,6 @@
                             beginAtZero: true,
                             max: 100,
                             grid: { color: '#334155' },
-                            title: {
-                                display: false // Remove qualquer título
-                            },
                             ticks: {
                                 color: '#94a3b8',
                                 callback: function(value) {
@@ -512,204 +815,19 @@
         }
     }
     
-    // Simula o consumo de água baseado nos relés ativos
-    function simularConsumo() {
-        const agora = Date.now();
-        let bombaAtiva = tempos.Bomba > agora;
-        let concessionariaAtiva = tempos.Concessionaria > agora;
-        
-        // Se alguma fonte está ativa, enche as caixas
-        if (bombaAtiva || concessionariaAtiva) {
-            let vazao = 0;
-            if (bombaAtiva && concessionariaAtiva) vazao = 15;
-            else if (bombaAtiva) vazao = 8;
-            else if (concessionariaAtiva) vazao = 12;
-            
-            niveis.casa = Math.min(100, niveis.casa + vazao * 0.05);
-            niveis.cozinha = Math.min(100, niveis.cozinha + vazao * 0.07);
-        }
-        
-        // Consumo normal das caixas (uso doméstico)
-        let consumoMomentaneo = Math.random() * 3 + 2;
-        niveis.casa = Math.max(0, niveis.casa - consumoMomentaneo * 0.12);
-        niveis.cozinha = Math.max(0, niveis.cozinha - consumoMomentaneo * 0.08);
-        
-        // Atualiza display
-        atualizarDisplayNiveis();
-        verificarAlertas();
-        
-        // Registra o consumo no gráfico do dia atual (simula dados em tempo real)
-        const dataAtual = new Date();
-        const diaSemanaAtual = dataAtual.getDay();
-        const horaAtual = dataAtual.getHours();
-        const indiceHora = Math.floor(horaAtual / 3);
-        
-        if (historicoConsumo[diaSemanaAtual] && indiceHora < horarios.length) {
-            // Adiciona pequenas variações em tempo real (convertendo nível atual para percentual de consumo)
-            let consumoPercentualCasa = (100 - niveis.casa) * 0.5;
-            let consumoPercentualCozinha = (100 - niveis.cozinha) * 0.5;
-            
-            consumoPercentualCasa += (Math.random() - 0.5) * 5;
-            consumoPercentualCozinha += (Math.random() - 0.5) * 5;
-            consumoPercentualCasa = Math.max(0, Math.min(100, consumoPercentualCasa));
-            consumoPercentualCozinha = Math.max(0, Math.min(100, consumoPercentualCozinha));
-            
-            // Encontra qual gráfico está mostrando o dia atual
-            const ordemDias = getOrdemDias();
-            for (let idx = 0; idx < ordemDias.length; idx++) {
-                const diasAtras = ordemDias[idx];
-                const diaIndex = (dataAtual.getDay() - diasAtras + 7) % 7;
-                if (diaIndex === diaSemanaAtual && charts[idx]) {
-                    charts[idx].data.datasets[0].data[indiceHora] = Math.round(consumoPercentualCasa);
-                    charts[idx].data.datasets[1].data[indiceHora] = Math.round(consumoPercentualCozinha);
-                    charts[idx].update('none');
-                    break;
-                }
-            }
-        }
-    }
-    
-    // Atualiza a interface dos níveis das caixas d'água
-    function atualizarDisplayNiveis() {
-        const aguaCasa = document.getElementById('agua-casa');
-        const percentCasa = document.getElementById('percent-casa');
-        const aguaCozinha = document.getElementById('agua-cozinha');
-        const percentCozinha = document.getElementById('percent-cozinha');
-        
-        if (aguaCasa) aguaCasa.style.height = `${niveis.casa}%`;
-        if (percentCasa) percentCasa.innerText = `${Math.round(niveis.casa)}%`;
-        if (aguaCozinha) aguaCozinha.style.height = `${niveis.cozinha}%`;
-        if (percentCozinha) percentCozinha.innerText = `${Math.round(niveis.cozinha)}%`;
-    }
-    
-    // Verifica e exibe alertas de nível crítico
-    function verificarAlertas() {
-        const alertaDiv = document.getElementById('alertas');
-        if (!alertaDiv) return;
-        
-        let alertas = [];
-        if (niveis.casa < 20) alertas.push('⚠️ Casa com nível BAIXO!');
-        if (niveis.cozinha < 20) alertas.push('⚠️ Cozinha com nível BAIXO!');
-        if (niveis.casa > 95) alertas.push('✅ Casa com nível ALTO - Transbordamento iminente!');
-        if (niveis.cozinha > 95) alertas.push('✅ Cozinha com nível ALTO - Transbordamento iminente!');
-        
-        if (alertas.length > 0) {
-            alertaDiv.style.display = 'block';
-            alertaDiv.innerHTML = alertas.join('<br>');
-            alertaDiv.className = `alerta-nivel ${niveis.casa < 20 || niveis.cozinha < 20 ? 'alerta-baixo' : 'alerta-alto'}`;
-        } else {
-            alertaDiv.style.display = 'none';
-        }
-    }
-    
-    // Reset da simulação (volta aos valores iniciais)
-    function resetarSimulacao() {
-        niveis = {
-            casa: 90,
-            cozinha: 75
-        };
-        
-        // Reseta históricos
-        for (let i = 0; i < 7; i++) {
-            historicoCasa[i] = gerarConsumoDia(i, 'casa');
-            historicoCozinha[i] = gerarConsumoDia(i, 'cozinha');
-            historicoConsumo[i] = {
-                casa: historicoCasa[i],
-                cozinha: historicoCozinha[i]
-            };
-        }
-        
-        atualizarDisplayNiveis();
-        inicializarGraficos();
-        verificarAlertas();
-        
-        // Feedback visual
-        const btn = event.target;
-        const textoOriginal = btn.innerText;
-        btn.innerText = '✅ Resetado!';
-        setTimeout(() => {
-            btn.innerText = textoOriginal;
-        }, 2000);
-    }
-    
     // ==========================================
-    // LÓGICA DE CONTROLE DOS RELÉS
+    // LOOP DE ATUALIZAÇÃO DOS TIMERS (CLIENT-SIDE)
     // ==========================================
     
-    function adicionarTempo(tipo, minutos) {
-        const agora = Date.now();
-        let base = (tempos[tipo] > agora) ? tempos[tipo] : agora;
-        tempos[tipo] = base + (minutos * 60 * 1000);
-        localStorage.setItem('tempo' + tipo, tempos[tipo]);
-        atualizarPainel();
-    }
-    
-    function desligar(tipo) {
-        tempos[tipo] = 0;
-        localStorage.setItem('tempo' + tipo, 0);
-        atualizarPainel();
-    }
-    
-    function formatarTempoExtenso(tempoFim) {
-        const agora = Date.now();
-        if (tempoFim <= agora) return "Desligado";
-        
-        let segundosTotais = Math.floor((tempoFim - agora) / 1000);
-        const dias = Math.floor(segundosTotais / 86400);
-        segundosTotais %= 86400;
-        const horas = Math.floor(segundosTotais / 3600);
-        segundosTotais %= 3600;
-        const minutos = Math.floor(segundosTotais / 60);
-        const segundos = segundosTotais % 60;
-        
-        let retorno = "";
-        if (dias > 0) retorno += `${dias}d `;
-        if (horas > 0 || dias > 0) retorno += `${horas.toString().padStart(2, '0')}h `;
-        retorno += `${minutos.toString().padStart(2, '0')}m `;
-        retorno += `${segundos.toString().padStart(2, '0')}s`;
-        
-        return retorno;
-    }
-    
-    function atualizarPainel() {
-        ['Bomba', 'Concessionaria'].forEach(tipo => {
-            const display = document.getElementById(`display-${tipo.toLowerCase()}`);
-            if (display) {
-                const formatado = formatarTempoExtenso(tempos[tipo]);
-                display.innerText = formatado;
-                display.style.color = (formatado === "Desligado") ? "#ef4444" : "#4ade80";
-            }
-        });
-    }
-    
-    // ==========================================
-    // INICIALIZAÇÃO E LOOP PRINCIPAL
-    // ==========================================
-    
-    // Inicializa tudo
-    inicializarHistorico();
-    inicializarGraficos();
-    atualizarDisplayNiveis();
-    verificarAlertas();
-    
-    // Loop de simulação (atualiza a cada 2 segundos)
-    setInterval(() => {
-        simularConsumo();
-        atualizarPainel();
-    }, 2000);
-    
-    // Loop dos relés (atualiza a cada segundo)
     setInterval(atualizarPainel, 1000);
     
-    // Adiciona evento para salvar estado antes de fechar
-    window.addEventListener('beforeunload', () => {
-        localStorage.setItem('tempoBomba', tempos.Bomba);
-        localStorage.setItem('tempoConcessionaria', tempos.Concessionaria);
-    });
+    // ==========================================
+    // INICIALIZAÇÃO
+    // ==========================================
     
-    console.log('✅ Sistema inicializado em MODO SIMULAÇÃO');
-    console.log('📊 Gráficos:', Object.keys(charts).length, 'criados');
-    console.log('💧 Níveis iniciais:', niveis);
+    carregarDadosIniciais();
+    
+    console.log('✅ Sistema inicializado - Modo Real');
 </script>
 </body>
 </html>
