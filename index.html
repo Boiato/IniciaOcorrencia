@@ -3,338 +3,829 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BOIATO - Monitor de Nível d'Água</title>
+    <title>BOIATO Web Control Pro - Sistema Real</title>
+    <!-- Biblioteca Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0f111a 0%, #1a1f2e 100%);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            text-align: center;
+            background: #0f111a;
             color: #e2e8f0;
+            margin: 0;
             padding: 20px;
-            min-height: 100vh;
         }
-        
         .container {
             max-width: 1200px;
             margin: 0 auto;
         }
-        
         h1 {
-            text-align: center;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, #38bdf8, #818cf8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-size: 32px;
+            color: #ffffff;
+            margin-bottom: 5px;
+            font-weight: 600;
         }
-        
-        .subtitle {
-            text-align: center;
+        .sub-title {
             color: #64748b;
             margin-bottom: 30px;
-            font-size: 0.9em;
-        }
-        
-        .status-bar {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .status {
-            display: inline-block;
-            padding: 8px 20px;
-            border-radius: 50px;
             font-size: 14px;
-            font-weight: bold;
         }
-        
-        .status.online {
+        .status-conexao {
+            background: #334155;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .status-conectado {
             background: #10b981;
             color: white;
         }
-        
-        .status.offline {
+        .status-desconectado {
             background: #ef4444;
             color: white;
         }
-        
-        .status.waiting {
+        .status-conectando {
             background: #f59e0b;
             color: white;
         }
-        
-        .cards {
+        .grid-topo {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 25px;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
         }
-        
         .card {
             background: #1e293b;
-            border-radius: 20px;
             padding: 25px;
-            text-align: center;
+            border-radius: 16px;
             box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
             border: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
-        
-        .card h2 {
-            color: #38bdf8;
-            margin-bottom: 20px;
-            font-size: 1.5em;
+        .card h3 {
+            margin: 0 0 15px 0;
+            color: #f8fafc;
+            font-size: 22px;
+            letter-spacing: 0.5px;
         }
-        
-        .tanque {
-            position: relative;
-            width: 120px;
-            height: 180px;
-            margin: 0 auto 20px;
+        .timer {
+            font-weight: 700;
+            font-size: 2em;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
             background: #0f172a;
-            border: 3px solid #475569;
-            border-radius: 10px;
-            overflow: hidden;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #1e293b;
         }
-        
+        .timer-ativo {
+            color: #4ade80;
+        }
+        .timer-inativo {
+            color: #ef4444;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            flex: 1;
+            min-width: 70px;
+            padding: 12px 15px;
+            background: #38bdf8;
+            color: #0f172a;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        .btn:hover {
+            background: #0ea5e9;
+            transform: translateY(-2px);
+        }
+        .btn-off {
+            background: #ef4444;
+            color: #ffffff;
+        }
+        .btn-off:hover {
+            background: #dc2626;
+        }
+        .btn-limite {
+            background: #f59e0b;
+            color: #0f172a;
+        }
+        .btn-limite:hover {
+            background: #d97706;
+        }
+        .card-niveis {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
+            border: 1px solid #38bdf8;
+            margin-bottom: 40px;
+        }
+        .card-niveis h2 {
+            margin: 0 0 20px 0;
+            color: #38bdf8;
+            font-size: 24px;
+        }
+        .niveis-flex {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .tanque-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 140px;
+        }
+        .tanque-visual {
+            width: 80px;
+            height: 120px;
+            border: 4px solid #64748b;
+            border-radius: 0 0 12px 12px;
+            position: relative;
+            background: #334155;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+        }
         .agua {
             position: absolute;
             bottom: 0;
-            left: 0;
             width: 100%;
-            background: linear-gradient(0deg, #3b82f6, #60a5fa);
-            transition: height 0.5s ease;
-            border-radius: 0 0 8px 8px;
+            background: linear-gradient(0deg, #1d4ed8 0%, #3b82f6 100%);
+            transition: height 1s ease-in-out;
+            box-shadow: 0 -2px 10px rgba(59, 130, 246, 0.5);
         }
-        
-        .nivel {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 24px;
-            font-weight: bold;
-            color: white;
-            text-shadow: 1px 1px 2px black;
-            z-index: 1;
+        .tanque-label {
+            margin-top: 12px;
+            font-size: 18px;
+            font-weight: 600;
         }
-        
-        .percent {
-            font-size: 32px;
+        .tanque-percent {
+            font-size: 20px;
             font-weight: bold;
             color: #38bdf8;
-            margin-top: 10px;
+            margin-top: 4px;
         }
-        
-        .label {
-            font-size: 14px;
-            color: #94a3b8;
+        .alerta-nivel {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .alerta-baixo {
+            background: #ef4444;
+            color: white;
+        }
+        .alerta-alto {
+            background: #10b981;
+            color: white;
+        }
+        .secao-graficos {
+            margin-bottom: 40px;
+        }
+        .secao-graficos h2 {
+            font-size: 24px;
+            border-bottom: 2px solid #334155;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .secao-graficos h3 {
+            font-size: 18px;
+            color: #38bdf8;
+            margin: 30px 0 15px 0;
+            text-align: left;
+            padding-left: 10px;
+            border-left: 3px solid #38bdf8;
+        }
+        .grid-graficos {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .card-grafico {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+        .card-grafico h4 {
+            margin: 0 0 15px 0;
+            color: #f8fafc;
+            font-size: 16px;
+            text-align: center;
+            font-weight: 600;
+        }
+        .card-grafico.destaque {
+            border: 2px solid #38bdf8;
+            background: linear-gradient(135deg, #1e293b 0%, #1a2538 100%);
+        }
+        .canvas-container {
+            position: relative;
+            height: 220px;
+            width: 100%;
+        }
+        .legenda-cores {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #334155;
+            font-size: 12px;
+        }
+        .legenda-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .cor-legenda {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+        .info-ip {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 20px;
+        }
+        .max-tempo-alert {
+            font-size: 11px;
+            color: #f59e0b;
             margin-top: 5px;
         }
-        
-        .alerta {
-            background: #1e293b;
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 30px;
-            text-align: center;
-            border-left: 4px solid #f59e0b;
-        }
-        
-        .alerta.baixo {
-            border-left-color: #ef4444;
-            background: rgba(239, 68, 68, 0.1);
-        }
-        
-        .alerta.alto {
-            border-left-color: #10b981;
-            background: rgba(16, 185, 129, 0.1);
-        }
-        
-        .info {
-            text-align: center;
-            color: #64748b;
+        .ultima-atualizacao {
             font-size: 12px;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #334155;
-        }
-        
-        .timestamp {
-            text-align: center;
             color: #94a3b8;
-            font-size: 12px;
-            margin-top: 10px;
+            text-align: right;
+            margin-bottom: 10px;
         }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        
-        .loading {
-            animation: pulse 1.5s ease-in-out infinite;
+        .info-parcial {
+            font-size: 11px;
+            color: #f59e0b;
+            text-align: center;
+            margin-top: 5px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>💧 BOIATO</h1>
-        <div class="subtitle">Sistema de Monitoramento de Nível d'Água</div>
-        
-        <div class="status-bar">
-            <div id="status" class="status waiting">🔄 Conectando ao Firebase...</div>
-        </div>
-        
-        <div class="cards">
-            <div class="card">
-                <h2>🏠 Caixa D'Água - Casa</h2>
-                <div class="tanque">
-                    <div class="agua" id="aguaCasa" style="height: 0%"></div>
-                    <div class="nivel" id="nivelCasa">--%</div>
-                </div>
-                <div class="percent" id="percentCasa">--%</div>
-                <div class="label">Nível atual</div>
+
+<div class="container">
+    <h1>BOIATO Web Control Pro</h1>
+    <div class="sub-title">Painel Inteligente de Monitoramento e Controle</div>
+    <div id="statusConexao" class="status-conexao status-conectando">🔄 Conectando ao Firebase...</div>
+
+    <div class="ultima-atualizacao" id="ultimaAtualizacao">
+        Aguardando dados...
+    </div>
+
+    <!-- SEÇÃO 1: FONTES DE ALIMENTAÇÃO (DISPOSITIVOS ATUADORES) -->
+    <div class="grid-topo">
+        <div class="card">
+            <h3>🚰 Controle da Bomba</h3>
+            <p class="timer" id="display-bomba" class="timer-inativo">Desligado</p>
+            <div class="btn-group">
+                <button class="btn" onclick="adicionarTempoBomba(1)">+1 Min</button>
+                <button class="btn" onclick="adicionarTempoBomba(15)">+15 Min</button>
+                <button class="btn" onclick="adicionarTempoBomba(60)">+1 Hora</button>
+                <button class="btn btn-off" onclick="desligarBomba()">OFF</button>
             </div>
-            
-            <div class="card">
-                <h2>🍽️ Caixa D'Água - Cozinha</h2>
-                <div class="tanque">
-                    <div class="agua" id="aguaCozinha" style="height: 0%"></div>
-                    <div class="nivel" id="nivelCozinha">--%</div>
-                </div>
-                <div class="percent" id="percentCozinha">--%</div>
-                <div class="label">Nível atual</div>
+            <div class="max-tempo-alert">⏱️ Máximo 2 horas contínuas</div>
+        </div>
+
+        <div class="card">
+            <h3>⚡ Concessionária</h3>
+            <p class="timer" id="display-concessionaria" class="timer-inativo">Desligado</p>
+            <div class="btn-group">
+                <button class="btn" onclick="adicionarTempoValvula(60)">+1 Hora</button>
+                <button class="btn" onclick="adicionarTempoValvula(1440)">+1 Dia</button>
+                <button class="btn btn-off" onclick="desligarValvula()">OFF</button>
             </div>
-        </div>
-        
-        <div id="alertas" style="display: none;"></div>
-        
-        <div class="timestamp" id="timestamp">
-            Aguardando primeira atualização...
-        </div>
-        
-        <div class="info">
-            🔥 Dados em tempo real via Firebase Realtime Database<br>
-            📡 Última atualização automática do ESP32
         </div>
     </div>
 
-    <script>
-        // Configuração do Firebase - USANDO SUAS CREDENCIAIS
-        const firebaseConfig = {
-            apiKey: "AIzaSyAItUzpEMFUeoS9fyrzq_xLPefeoy3nhxI",
-            authDomain: "nivelcaixa-2dbd8.firebaseapp.com",
-            databaseURL: "https://nivelcaixa-2dbd8-default-rtdb.firebaseio.com",
-            projectId: "nivelcaixa-2dbd8",
-            storageBucket: "nivelcaixa-2dbd8.firebasestorage.app",
-            messagingSenderId: "123456789012",
-            appId: "1:123456789012:web:abcdef123456"
-        };
+    <!-- SEÇÃO 2: ARMAZENAMENTO / RESERVATÓRIOS -->
+    <div class="card-niveis">
+        <h2>💧 Nível dos Reservatórios</h2>
+        <div class="niveis-flex">
+            <div class="tanque-wrapper">
+                <div class="tanque-visual">
+                    <div class="agua" id="agua-casa" style="height: 0%;"></div>
+                </div>
+                <div class="tanque-label">Casa</div>
+                <div class="tanque-percent" id="percent-casa">--%</div>
+            </div>
+            <div class="tanque-wrapper">
+                <div class="tanque-visual">
+                    <div class="agua" id="agua-cozinha" style="height: 0%;"></div>
+                </div>
+                <div class="tanque-label">Cozinha</div>
+                <div class="tanque-percent" id="percent-cozinha">--%</div>
+            </div>
+        </div>
+        <div id="alertas" class="alerta-nivel" style="display: none;"></div>
+    </div>
 
-        // Inicializar Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+    <!-- SEÇÃO 3: GRÁFICOS -->
+    <div class="secao-graficos">
+        <h2>📊 Gráficos de Consumo</h2>
+        
+        <!-- GRÁFICO DO DIA ATUAL (DADOS PARCIAIS) -->
+        <h3>📈 HOJE - Dados Parciais (até o momento)</h3>
+        <div id="grafico-hoje-container" class="grid-graficos">
+            <div class="card-grafico destaque" id="card-hoje">
+                <h4 id="hoje-titulo">Carregando dados de hoje...</h4>
+                <div class="canvas-container">
+                    <canvas id="chart-hoje"></canvas>
+                </div>
+                <div class="legenda-cores">
+                    <div class="legenda-item">
+                        <div class="cor-legenda" style="background: #10b981;"></div>
+                        <span>Casa</span>
+                    </div>
+                    <div class="legenda-item">
+                        <div class="cor-legenda" style="background: #3b82f6;"></div>
+                        <span>Cozinha</span>
+                    </div>
+                </div>
+                <div class="info-parcial" id="info-parcial">⏳ Atualizado em tempo real</div>
+            </div>
+        </div>
+        
+        <!-- GRÁFICOS DOS DIAS ANTERIORES (COMPLETOS) -->
+        <h3>📜 Histórico - Últimos 6 Dias (Completos)</h3>
+        <div id="graficos-container" class="grid-graficos">
+            <div class="loading">Carregando histórico...</div>
+        </div>
+    </div>
+    <div class="info-ip" id="infoIP">🔥 Dados via Firebase Realtime Database</div>
+</div>
 
-        // Elementos DOM
-        const statusDiv = document.getElementById('status');
-        const aguaCasa = document.getElementById('aguaCasa');
-        const nivelCasa = document.getElementById('nivelCasa');
-        const percentCasa = document.getElementById('percentCasa');
-        const aguaCozinha = document.getElementById('aguaCozinha');
-        const nivelCozinha = document.getElementById('nivelCozinha');
-        const percentCozinha = document.getElementById('percentCozinha');
-        const timestampDiv = document.getElementById('timestamp');
-        const alertasDiv = document.getElementById('alertas');
+<script>
+    // ==========================================
+    // CONFIGURAÇÕES DO FIREBASE
+    // ==========================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyAItUzpEMFUeoS9fyrzq_xLPefeoy3nhxI",
+        authDomain: "nivelcaixa-2dbd8.firebaseapp.com",
+        databaseURL: "https://nivelcaixa-2dbd8-default-rtdb.firebaseio.com",
+        projectId: "nivelcaixa-2dbd8",
+        storageBucket: "nivelcaixa-2dbd8.firebasestorage.app",
+        messagingSenderId: "123456789012",
+        appId: "1:123456789012:web:abcdef123456"
+    };
 
-        // Variáveis
-        let ultimaAtualizacao = null;
+    // Inicializar Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
 
-        // Função para formatar hora
-        function formatarHora(timestamp) {
-            if (!timestamp) return '--:--:--';
-            const data = new Date(timestamp * 1000);
-            return data.toLocaleTimeString('pt-BR');
+    // ==========================================
+    // VARIÁVEIS GLOBAIS
+    // ==========================================
+    let niveis = {
+        casa: 0,
+        cozinha: 0
+    };
+    
+    let charts = {};
+    let chartHoje = null;
+    let historicoCasa = {};
+    let historicoCozinha = {};
+    
+    const horariosCompletos = ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
+    const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    
+    // Dados simulados para dias anteriores (serão substituídos quando o ESP32 enviar)
+    for(let i = 0; i < 7; i++) {
+        historicoCasa[i] = Array(8).fill(0);
+        historicoCozinha[i] = Array(8).fill(0);
+    }
+    
+    // Dados do dia atual (parciais)
+    let dadosHojeCasa = Array(8).fill(null);
+    let dadosHojeCozinha = Array(8).fill(null);
+    let horaAtual = 0;
+    let maxPontosHoje = 1;
+
+    // ==========================================
+    // FUNÇÕES AUXILIARES
+    // ==========================================
+    function getHoraAtual() {
+        const agora = new Date();
+        return agora.getHours();
+    }
+    
+    function getMaxPontosPorHora(hora) {
+        // Cada ponto representa 3 horas: 0h, 3h, 6h, 9h, 12h, 15h, 18h, 21h
+        let pontos = Math.floor(hora / 3) + 1;
+        if (pontos > 8) pontos = 8;
+        if (pontos < 1) pontos = 1;
+        return pontos;
+    }
+    
+    function getHorariosParciais(maxPontos) {
+        return horariosCompletos.slice(0, maxPontos);
+    }
+    
+    function getDataFormatada(diasAtras) {
+        const data = new Date();
+        data.setDate(data.getDate() - diasAtras);
+        const dia = data.getDate().toString().padStart(2, '0');
+        const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const mes = meses[data.getMonth()];
+        return `${dia}/${mes}`;
+    }
+    
+    function getDiaSemana(diasAtras) {
+        const data = new Date();
+        data.setDate(data.getDate() - diasAtras);
+        return diasSemana[data.getDay()];
+    }
+    
+    function formatarHora(timestamp) {
+        if (!timestamp) return '--:--:--';
+        const data = new Date(timestamp * 1000);
+        return data.toLocaleTimeString('pt-BR');
+    }
+    
+    // ==========================================
+    // FUNÇÕES DA INTERFACE
+    // ==========================================
+    function atualizarDisplayNiveis() {
+        const aguaCasa = document.getElementById('agua-casa');
+        const percentCasa = document.getElementById('percent-casa');
+        const aguaCozinha = document.getElementById('agua-cozinha');
+        const percentCozinha = document.getElementById('percent-cozinha');
+        
+        if (aguaCasa) aguaCasa.style.height = `${niveis.casa}%`;
+        if (percentCasa) percentCasa.innerText = `${Math.round(niveis.casa)}%`;
+        if (aguaCozinha) aguaCozinha.style.height = `${niveis.cozinha}%`;
+        if (percentCozinha) percentCozinha.innerText = `${Math.round(niveis.cozinha)}%`;
+        
+        verificarAlertas();
+        
+        // Atualizar gráfico do dia atual com os novos níveis
+        atualizarDadosHoje();
+    }
+    
+    function verificarAlertas() {
+        const alertaDiv = document.getElementById('alertas');
+        if (!alertaDiv) return;
+        
+        let alertas = [];
+        if (niveis.casa < 20) alertas.push('⚠️ Casa com nível BAIXO!');
+        if (niveis.cozinha < 20) alertas.push('⚠️ Cozinha com nível BAIXO!');
+        if (niveis.casa > 95) alertas.push('✅ Casa com nível ALTO - Transbordamento iminente!');
+        if (niveis.cozinha > 95) alertas.push('✅ Cozinha com nível ALTO - Transbordamento iminente!');
+        
+        if (alertas.length > 0) {
+            alertaDiv.style.display = 'block';
+            alertaDiv.innerHTML = alertas.join('<br>');
+            alertaDiv.className = `alerta-nivel ${niveis.casa < 20 || niveis.cozinha < 20 ? 'alerta-baixo' : 'alerta-alto'}`;
+        } else {
+            alertaDiv.style.display = 'none';
         }
-
-        // Função para atualizar a interface
-        function atualizarInterface() {
-            // Atualiza visual da Casa
-            if (window.nivelCasa !== undefined) {
-                const altura = Math.min(100, Math.max(0, window.nivelCasa));
-                aguaCasa.style.height = altura + '%';
-                nivelCasa.innerText = Math.round(altura) + '%';
-                percentCasa.innerText = Math.round(altura) + '%';
-            }
-            
-            // Atualiza visual da Cozinha
-            if (window.nivelCozinha !== undefined) {
-                const altura = Math.min(100, Math.max(0, window.nivelCozinha));
-                aguaCozinha.style.height = altura + '%';
-                nivelCozinha.innerText = Math.round(altura) + '%';
-                percentCozinha.innerText = Math.round(altura) + '%';
-            }
-            
-            // Verificar alertas
-            verificarAlertas();
+    }
+    
+    // ==========================================
+    // GRÁFICO DO DIA ATUAL (DADOS PARCIAIS)
+    // ==========================================
+    function inicializarGraficoHoje() {
+        horaAtual = getHoraAtual();
+        maxPontosHoje = getMaxPontosPorHora(horaAtual);
+        const horariosParciais = getHorariosParciais(maxPontosHoje);
+        
+        // Preparar dados para o gráfico (usar null para pontos futuros)
+        let dadosCasaHoje = [];
+        let dadosCozinhaHoje = [];
+        
+        for (let i = 0; i < maxPontosHoje; i++) {
+            dadosCasaHoje.push(dadosHojeCasa[i] !== null ? dadosHojeCasa[i] : 0);
+            dadosCozinhaHoje.push(dadosHojeCozinha[i] !== null ? dadosHojeCozinha[i] : 0);
         }
         
-        // Função para verificar alertas de nível
-        function verificarAlertas() {
-            const alertas = [];
-            
-            if (window.nivelCasa !== undefined) {
-                if (window.nivelCasa < 20) {
-                    alertas.push('⚠️ ALERTA: Caixa da Casa está com nível BAIXO!');
-                } else if (window.nivelCasa > 95) {
-                    alertas.push('✅ ATENÇÃO: Caixa da Casa está quase CHEIA!');
+        const ctx = document.getElementById('chart-hoje').getContext('2d');
+        
+        if (chartHoje) {
+            chartHoje.destroy();
+        }
+        
+        chartHoje = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: horariosParciais,
+                datasets: [
+                    {
+                        label: 'Casa',
+                        data: dadosCasaHoje,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                        borderWidth: 3,
+                        tension: 0.3,
+                        fill: false,
+                        pointBackgroundColor: '#10b981',
+                        pointBorderColor: '#0f172a',
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    },
+                    {
+                        label: 'Cozinha',
+                        data: dadosCozinhaHoje,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                        borderWidth: 3,
+                        tension: 0.3,
+                        fill: false,
+                        pointBackgroundColor: '#3b82f6',
+                        pointBorderColor: '#0f172a',
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y}%`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: '#334155' },
+                        ticks: {
+                            color: '#94a3b8',
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    },
+                    x: {
+                        grid: { color: '#334155' },
+                        ticks: { 
+                            color: '#94a3b8',
+                            font: { size: 11 },
+                            weight: 'bold'
+                        }
+                    }
                 }
             }
+        });
+        
+        const dataStr = getDataFormatada(0);
+        const diaSemana = getDiaSemana(0);
+        document.getElementById('hoje-titulo').innerHTML = `📅 ${dataStr} - ${diaSemana} (Dados até ${horaAtual}:00)`;
+        document.getElementById('info-parcial').innerHTML = `⏳ Dados parciais - Atualizado em tempo real | ${maxPontosHoje} de 8 períodos registrados`;
+    }
+    
+    function atualizarDadosHoje() {
+        horaAtual = getHoraAtual();
+        const novoMaxPontos = getMaxPontosPorHora(horaAtual);
+        const faixaAtual = Math.floor(horaAtual / 3);
+        
+        if (faixaAtual >= 0 && faixaAtual < 8) {
+            dadosHojeCasa[faixaAtual] = niveis.casa;
+            dadosHojeCozinha[faixaAtual] = niveis.cozinha;
+        }
+        
+        // Se o número de pontos mudou (passou de hora), recria o gráfico
+        if (novoMaxPontos !== maxPontosHoje) {
+            maxPontosHoje = novoMaxPontos;
+            inicializarGraficoHoje();
+        } else if (chartHoje) {
+            // Atualiza apenas os dados
+            const horariosParciais = getHorariosParciais(maxPontosHoje);
+            let dadosCasaHoje = [];
+            let dadosCozinhaHoje = [];
             
-            if (window.nivelCozinha !== undefined) {
-                if (window.nivelCozinha < 20) {
-                    alertas.push('⚠️ ALERTA: Caixa da Cozinha está com nível BAIXO!');
-                } else if (window.nivelCozinha > 95) {
-                    alertas.push('✅ ATENÇÃO: Caixa da Cozinha está quase CHEIA!');
-                }
+            for (let i = 0; i < maxPontosHoje; i++) {
+                dadosCasaHoje.push(dadosHojeCasa[i] !== null ? dadosHojeCasa[i] : 0);
+                dadosCozinhaHoje.push(dadosHojeCozinha[i] !== null ? dadosHojeCozinha[i] : 0);
             }
             
-            if (alertas.length > 0) {
-                alertasDiv.style.display = 'block';
-                alertasDiv.className = 'alerta ' + (window.nivelCasa < 20 || window.nivelCozinha < 20 ? 'baixo' : 'alto');
-                alertasDiv.innerHTML = alertas.join('<br>');
-            } else {
-                alertasDiv.style.display = 'none';
+            chartHoje.data.labels = horariosParciais;
+            chartHoje.data.datasets[0].data = dadosCasaHoje;
+            chartHoje.data.datasets[1].data = dadosCozinhaHoje;
+            chartHoje.update();
+            
+            const dataStr = getDataFormatada(0);
+            const diaSemana = getDiaSemana(0);
+            document.getElementById('hoje-titulo').innerHTML = `📅 ${dataStr} - ${diaSemana} (Dados até ${horaAtual}:00)`;
+            document.getElementById('info-parcial').innerHTML = `⏳ Dados parciais - Atualizado em tempo real | ${maxPontosHoje} de 8 períodos registrados`;
+        }
+    }
+    
+    // ==========================================
+    // GRÁFICOS DOS DIAS ANTERIORES
+    // ==========================================
+    function inicializarGraficosHistorico() {
+        const container = document.getElementById('graficos-container');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        // Mostrar dias 1 a 6 (dias anteriores)
+        for (let diasAtras = 1; diasAtras <= 6; diasAtras++) {
+            const diaIndex = (new Date().getDay() - diasAtras + 7) % 7;
+            const dataLabel = getDataFormatada(diasAtras);
+            const nomeDia = getDiaSemana(diasAtras);
+            
+            const dadosCasa = historicoCasa[diaIndex] || Array(8).fill(0);
+            const dadosCozinha = historicoCozinha[diaIndex] || Array(8).fill(0);
+            
+            const card = document.createElement('div');
+            card.className = 'card-grafico';
+            card.innerHTML = `
+                <h4>${dataLabel} - ${nomeDia}</h4>
+                <div class="canvas-container">
+                    <canvas id="chart-hist-${diasAtras}"></canvas>
+                </div>
+                <div class="legenda-cores">
+                    <div class="legenda-item">
+                        <div class="cor-legenda" style="background: #10b981;"></div>
+                        <span>Casa</span>
+                    </div>
+                    <div class="legenda-item">
+                        <div class="cor-legenda" style="background: #3b82f6;"></div>
+                        <span>Cozinha</span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+            
+            const canvas = document.getElementById(`chart-hist-${diasAtras}`);
+            if (!canvas) continue;
+            
+            const ctx = canvas.getContext('2d');
+            
+            charts[diasAtras] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: horariosCompletos,
+                    datasets: [
+                        {
+                            label: 'Casa',
+                            data: dadosCasa,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: false,
+                            pointBackgroundColor: '#10b981',
+                            pointBorderColor: '#0f172a',
+                            pointRadius: 3,
+                            pointHoverRadius: 5
+                        },
+                        {
+                            label: 'Cozinha',
+                            data: dadosCozinha,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: false,
+                            pointBackgroundColor: '#3b82f6',
+                            pointBorderColor: '#0f172a',
+                            pointRadius: 3,
+                            pointHoverRadius: 5
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { color: '#334155' },
+                            ticks: {
+                                color: '#94a3b8',
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: { color: '#334155' },
+                            ticks: { 
+                                color: '#94a3b8',
+                                font: { size: 9 },
+                                rotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+    
+    function atualizarGraficosHistorico() {
+        for (let key in charts) {
+            if (charts[key]) {
+                charts[key].update();
             }
         }
-
-        // ==========================================
-        // CONEXÃO COM FIREBASE EM TEMPO REAL
-        // ==========================================
+    }
+    
+    // ==========================================
+    // DADOS SIMULADOS PARA TESTE (ENQUANTO ESP32 NÃO ENVIA HISTÓRICO)
+    // ==========================================
+    function gerarDadosSimulados() {
+        for(let i = 0; i < 7; i++) {
+            for(let j = 0; j < 8; j++) {
+                historicoCasa[i][j] = Math.floor(Math.random() * 100);
+                historicoCozinha[i][j] = Math.floor(Math.random() * 100);
+            }
+        }
         
+        // Dados simulados para hoje
+        for(let j = 0; j < 8; j++) {
+            dadosHojeCasa[j] = Math.floor(Math.random() * 100);
+            dadosHojeCozinha[j] = Math.floor(Math.random() * 100);
+        }
+    }
+    
+    // ==========================================
+    // FUNÇÕES DE CONTROLE (APENAS VISUAL)
+    // ==========================================
+    function adicionarTempoBomba(minutos) {
+        alert("⚠️ Controle da bomba será implementado em breve via Firebase.\n\nPor enquanto, use o controle direto no ESP32.");
+        console.log(`Adicionar ${minutos} min à bomba`);
+    }
+    
+    function desligarBomba() {
+        alert("⚠️ Desligar bomba será implementado em breve via Firebase.\n\nPor enquanto, use o controle direto no ESP32.");
+        console.log("Desligar bomba");
+    }
+    
+    function adicionarTempoValvula(minutos) {
+        alert("⚠️ Controle da válvula será implementado em breve via Firebase.\n\nPor enquanto, use o controle direto no ESP32.");
+        console.log(`Adicionar ${minutos} min à válvula`);
+    }
+    
+    function desligarValvula() {
+        alert("⚠️ Desligar válvula será implementado em breve via Firebase.\n\nPor enquanto, use o controle direto no ESP32.");
+        console.log("Desligar válvula");
+    }
+    
+    // ==========================================
+    // CONEXÃO COM FIREBASE
+    // ==========================================
+    function conectarFirebase() {
         // Escutar mudanças no nível da Casa
         const casaRef = database.ref('niveis/casa');
         casaRef.on('value', (snapshot) => {
             const nivel = snapshot.val();
             if (nivel !== null) {
-                window.nivelCasa = nivel;
-                atualizarInterface();
-                
-                // Atualiza status
-                statusDiv.innerHTML = '✅ Conectado ao Firebase';
-                statusDiv.className = 'status online';
+                niveis.casa = nivel;
+                atualizarDisplayNiveis();
+                document.getElementById('statusConexao').innerHTML = '✅ Conectado ao Firebase';
+                document.getElementById('statusConexao').className = 'status-conexao status-conectado';
             }
         }, (error) => {
             console.error('Erro na leitura da Casa:', error);
-            statusDiv.innerHTML = '⚠️ Erro de conexão';
-            statusDiv.className = 'status offline';
+            document.getElementById('statusConexao').innerHTML = '⚠️ Erro na conexão';
+            document.getElementById('statusConexao').className = 'status-conexao status-desconectado';
         });
 
         // Escutar mudanças no nível da Cozinha
@@ -342,8 +833,8 @@
         cozinhaRef.on('value', (snapshot) => {
             const nivel = snapshot.val();
             if (nivel !== null) {
-                window.nivelCozinha = nivel;
-                atualizarInterface();
+                niveis.cozinha = nivel;
+                atualizarDisplayNiveis();
             }
         });
 
@@ -352,21 +843,43 @@
         timestampRef.on('value', (snapshot) => {
             const timestamp = snapshot.val();
             if (timestamp !== null) {
-                ultimaAtualizacao = timestamp;
-                timestampDiv.innerHTML = `📡 Última atualização: ${formatarHora(timestamp)}`;
+                document.getElementById('ultimaAtualizacao').innerHTML = `📡 Última atualização: ${formatarHora(timestamp)}`;
             }
         });
         
-        // Timeout para mostrar que está aguardando dados
+        // Inicializar gráficos com dados simulados (até o ESP32 enviar dados reais)
         setTimeout(() => {
-            if (window.nivelCasa === undefined && window.nivelCozinha === undefined) {
-                statusDiv.innerHTML = '⏳ Aguardando dados do ESP32...';
-                statusDiv.className = 'status waiting';
-                timestampDiv.innerHTML = 'Aguardando primeiro envio de dados do ESP32...';
-            }
-        }, 3000);
+            gerarDadosSimulados();
+            inicializarGraficoHoje();
+            inicializarGraficosHistorico();
+        }, 1000);
+    }
+    
+    // ==========================================
+    // TIMER DE ATUALIZAÇÃO DOS TIMERS (SIMULADO)
+    // ==========================================
+    setInterval(() => {
+        const displayBomba = document.getElementById('display-bomba');
+        const displayConcessionaria = document.getElementById('display-concessionaria');
         
-        console.log('✅ Sistema inicializado - Aguardando dados do Firebase');
-    </script>
+        if (displayBomba) {
+            displayBomba.innerText = "Desligado";
+            displayBomba.className = "timer timer-inativo";
+        }
+        
+        if (displayConcessionaria) {
+            displayConcessionaria.innerText = "Desligado";
+            displayConcessionaria.className = "timer timer-inativo";
+        }
+    }, 1000);
+    
+    // ==========================================
+    // INICIALIZAÇÃO
+    // ==========================================
+    conectarFirebase();
+    
+    console.log('✅ Sistema inicializado com Firebase!');
+    console.log('📊 Gráfico do dia atual com dados parciais incluído!');
+</script>
 </body>
 </html>
