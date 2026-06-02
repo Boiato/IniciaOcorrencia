@@ -3,831 +3,370 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BOIATO Web Control Pro - Sistema Real</title>
-    <!-- Biblioteca Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <title>BOIATO - Monitor de Nível d'Água</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
-        /* --- ESTILIZAÇÃO VISUAL (INTERFACE DO USUÁRIO) --- */
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            text-align: center;
-            background: #0f111a;
-            color: #e2e8f0;
+        * {
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            box-sizing: border-box;
         }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f111a 0%, #1a1f2e 100%);
+            color: #e2e8f0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
         .container {
             max-width: 1200px;
             margin: 0 auto;
         }
+        
         h1 {
-            font-size: 32px;
-            color: #ffffff;
-            margin-bottom: 5px;
-            font-weight: 600;
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
-        .sub-title {
+        
+        .subtitle {
+            text-align: center;
             color: #64748b;
             margin-bottom: 30px;
-            font-size: 14px;
+            font-size: 0.9em;
         }
-        .status-conexao {
-            background: #334155;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 12px;
+        
+        .status-bar {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .status {
             display: inline-block;
-            margin-bottom: 20px;
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: bold;
         }
-        .status-conectado {
+        
+        .status.online {
             background: #10b981;
             color: white;
         }
-        .status-desconectado {
+        
+        .status.offline {
             background: #ef4444;
             color: white;
         }
-        .status-conectando {
+        
+        .status.waiting {
             background: #f59e0b;
             color: white;
         }
-        .grid-topo {
+        
+        .cards {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 25px;
-            margin-bottom: 25px;
+            margin-bottom: 30px;
         }
+        
         .card {
             background: #1e293b;
+            border-radius: 20px;
             padding: 25px;
-            border-radius: 16px;
+            text-align: center;
             box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
             border: 1px solid #334155;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
         }
-        .card h3 {
-            margin: 0 0 15px 0;
-            color: #f8fafc;
-            font-size: 22px;
-            letter-spacing: 0.5px;
-        }
-        .timer {
-            font-weight: 700;
-            font-size: 2em;
-            margin: 15px 0;
-            font-family: 'Courier New', monospace;
-            background: #0f172a;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #1e293b;
-        }
-        .timer-ativo {
-            color: #4ade80;
-        }
-        .timer-inativo {
-            color: #ef4444;
-        }
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        .btn {
-            flex: 1;
-            min-width: 70px;
-            padding: 12px 15px;
-            background: #38bdf8;
-            color: #0f172a;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s ease;
-        }
-        .btn:hover {
-            background: #0ea5e9;
-            transform: translateY(-2px);
-        }
-        .btn-off {
-            background: #ef4444;
-            color: #ffffff;
-        }
-        .btn-off:hover {
-            background: #dc2626;
-        }
-        .btn-limite {
-            background: #f59e0b;
-            color: #0f172a;
-        }
-        .btn-limite:hover {
-            background: #d97706;
-        }
-        .card-niveis {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            padding: 25px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
-            border: 1px solid #38bdf8;
-            margin-bottom: 40px;
-        }
-        .card-niveis h2 {
-            margin: 0 0 20px 0;
+        
+        .card h2 {
             color: #38bdf8;
-            font-size: 24px;
+            margin-bottom: 20px;
+            font-size: 1.5em;
         }
-        .niveis-flex {
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-        .tanque-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 140px;
-        }
-        .tanque-visual {
-            width: 80px;
-            height: 120px;
-            border: 4px solid #64748b;
-            border-radius: 0 0 12px 12px;
+        
+        .tanque {
             position: relative;
-            background: #334155;
+            width: 120px;
+            height: 180px;
+            margin: 0 auto 20px;
+            background: #0f172a;
+            border: 3px solid #475569;
+            border-radius: 10px;
             overflow: hidden;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
         }
+        
         .agua {
             position: absolute;
             bottom: 0;
+            left: 0;
             width: 100%;
-            background: linear-gradient(0deg, #1d4ed8 0%, #3b82f6 100%);
-            transition: height 1s ease-in-out;
-            box-shadow: 0 -2px 10px rgba(59, 130, 246, 0.5);
+            background: linear-gradient(0deg, #3b82f6, #60a5fa);
+            transition: height 0.5s ease;
+            border-radius: 0 0 8px 8px;
         }
-        .tanque-label {
-            margin-top: 12px;
-            font-size: 18px;
-            font-weight: 600;
+        
+        .nivel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+            z-index: 1;
         }
-        .tanque-percent {
-            font-size: 20px;
+        
+        .percent {
+            font-size: 32px;
             font-weight: bold;
             color: #38bdf8;
-            margin-top: 4px;
-        }
-        .alerta-nivel {
-            margin-top: 20px;
-            padding: 10px;
-            border-radius: 8px;
-            font-weight: bold;
-            display: inline-block;
-        }
-        .alerta-baixo {
-            background: #ef4444;
-            color: white;
-        }
-        .alerta-alto {
-            background: #10b981;
-            color: white;
-        }
-        .secao-graficos h2 {
-            font-size: 24px;
-            border-bottom: 2px solid #334155;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        .grid-graficos {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-        .card-grafico {
-            background: #1e293b;
-            padding: 15px;
-            border-radius: 12px;
-            border: 1px solid #334155;
-        }
-        .card-grafico h4 {
-            margin: 0 0 15px 0;
-            color: #f8fafc;
-            font-size: 16px;
-            text-align: center;
-            font-weight: 600;
-        }
-        .canvas-container {
-            position: relative;
-            height: 220px;
-            width: 100%;
-        }
-        .legenda-cores {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
             margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #334155;
-            font-size: 12px;
         }
-        .legenda-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .cor-legenda {
-            width: 16px;
-            height: 16px;
-            border-radius: 3px;
-        }
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #64748b;
-        }
-        .info-ip {
-            font-size: 11px;
-            color: #64748b;
-            margin-top: 20px;
-        }
-        .max-tempo-alert {
-            font-size: 11px;
-            color: #f59e0b;
+        
+        .label {
+            font-size: 14px;
+            color: #94a3b8;
             margin-top: 5px;
+        }
+        
+        .alerta {
+            background: #1e293b;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+            border-left: 4px solid #f59e0b;
+        }
+        
+        .alerta.baixo {
+            border-left-color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+        
+        .alerta.alto {
+            border-left-color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+        }
+        
+        .info {
+            text-align: center;
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #334155;
+        }
+        
+        .timestamp {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .loading {
+            animation: pulse 1.5s ease-in-out infinite;
         }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <h1>BOIATO Web Control Pro</h1>
-    <div class="sub-title">Painel Inteligente de Monitoramento e Controle</div>
-    <div id="statusConexao" class="status-conexao status-conectando">🔄 Conectando ao ESP32...</div>
-
-    <!-- SEÇÃO 1: FONTES DE ALIMENTAÇÃO (DISPOSITIVOS ATUADORES) -->
-    <div class="grid-topo">
-        <div class="card">
-            <h3>🚰 Controle da Bomba</h3>
-            <p class="timer" id="display-bomba" class="timer-inativo">Desligado</p>
-            <div class="btn-group">
-                <button class="btn" onclick="adicionarTempoBomba(1)">+1 Min</button>
-                <button class="btn" onclick="adicionarTempoBomba(15)">+15 Min</button>
-                <button class="btn" onclick="adicionarTempoBomba(60)">+1 Hora</button>
-                <button class="btn btn-off" onclick="desligarBomba()">OFF</button>
-            </div>
-            <div class="max-tempo-alert">⏱️ Máximo 2 horas contínuas</div>
+    <div class="container">
+        <h1>💧 BOIATO</h1>
+        <div class="subtitle">Sistema de Monitoramento de Nível d'Água</div>
+        
+        <div class="status-bar">
+            <div id="status" class="status waiting">🔄 Conectando ao Firebase...</div>
         </div>
-
-        <div class="card">
-            <h3>⚡ Concessionária</h3>
-            <p class="timer" id="display-concessionaria" class="timer-inativo">Desligado</p>
-            <div class="btn-group">
-                <button class="btn" onclick="adicionarTempoValvula(60)">+1 Hora</button>
-                <button class="btn" onclick="adicionarTempoValvula(1440)">+1 Dia</button>
-                <button class="btn btn-off" onclick="desligarValvula()">OFF</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- SEÇÃO 2: ARMAZENAMENTO / RESERVATÓRIOS -->
-    <div class="card-niveis">
-        <h2>💧 Nível dos Reservatórios</h2>
-        <div class="niveis-flex">
-            <div class="tanque-wrapper">
-                <div class="tanque-visual">
-                    <div class="agua" id="agua-casa" style="height: 0%;"></div>
+        
+        <div class="cards">
+            <div class="card">
+                <h2>🏠 Caixa D'Água - Casa</h2>
+                <div class="tanque">
+                    <div class="agua" id="aguaCasa" style="height: 0%"></div>
+                    <div class="nivel" id="nivelCasa">--%</div>
                 </div>
-                <div class="tanque-label">Casa</div>
-                <div class="tanque-percent" id="percent-casa">--%</div>
+                <div class="percent" id="percentCasa">--%</div>
+                <div class="label">Nível atual</div>
             </div>
-            <div class="tanque-wrapper">
-                <div class="tanque-visual">
-                    <div class="agua" id="agua-cozinha" style="height: 0%;"></div>
+            
+            <div class="card">
+                <h2>🍽️ Caixa D'Água - Cozinha</h2>
+                <div class="tanque">
+                    <div class="agua" id="aguaCozinha" style="height: 0%"></div>
+                    <div class="nivel" id="nivelCozinha">--%</div>
                 </div>
-                <div class="tanque-label">Cozinha</div>
-                <div class="tanque-percent" id="percent-cozinha">--%</div>
+                <div class="percent" id="percentCozinha">--%</div>
+                <div class="label">Nível atual</div>
             </div>
         </div>
-        <div id="alertas" class="alerta-nivel" style="display: none;"></div>
-    </div>
-
-    <!-- SEÇÃO 3: HISTÓRICO DE CONSUMO -->
-    <div class="secao-graficos">
-        <h2>📊 Histórico de Consumo - Últimos 7 Dias</h2>
-        <div id="graficos-container" class="grid-graficos">
-            <div class="loading">Carregando histórico...</div>
+        
+        <div id="alertas" style="display: none;"></div>
+        
+        <div class="timestamp" id="timestamp">
+            Aguardando primeira atualização...
+        </div>
+        
+        <div class="info">
+            🔥 Dados em tempo real via Firebase Realtime Database<br>
+            📡 Última atualização automática do ESP32
         </div>
     </div>
-    <div class="info-ip" id="infoIP">Aguardando conexão...</div>
-</div>
 
-<script>
-    // ==========================================
-    // CONFIGURAÇÕES
-    // ==========================================
-    
-    let ESP32_IP = null;
-    let ws = null;
-    let tempos = {
-        Bomba: 0,
-        Concessionaria: 0
-    };
-    
-    let niveis = {
-        casa: 0,
-        cozinha: 0
-    };
-    
-    let historicoConsumo = {};
-    let historicoCasa = {};
-    let historicoCozinha = {};
-    let charts = {};
-    
-    const horarios = ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
-    const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-    
-    // ==========================================
-    // FUNÇÕES DE DESCOBERTA DO ESP32
-    // ==========================================
-    
-    // Tenta encontrar o ESP32 na rede local
-    async function descobrirESP32() {
-        // Primeiro tenta o IP padrão (você pode ajustar conforme sua rede)
-        const possiveisIPs = [
-            '192.168.1.100',
-            '192.168.0.100',
-            '192.168.1.200',
-            '192.168.0.200',
-            localStorage.getItem('esp32_ip')  // IP salvo anteriormente
-        ].filter(ip => ip);
+    <script>
+        // Configuração do Firebase - USANDO SUAS CREDENCIAIS
+        const firebaseConfig = {
+            apiKey: "AIzaSyAItUzpEMFUeoS9fyrzq_xLPefeoy3nhxI",
+            authDomain: "nivelcaixa-2dbd8.firebaseapp.com",
+            databaseURL: "https://nivelcaixa-2dbd8-default-rtdb.firebaseio.com",
+            projectId: "nivelcaixa-2dbd8",
+            storageBucket: "nivelcaixa-2dbd8.firebasestorage.app",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef123456"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Elementos DOM
+        const statusDiv = document.getElementById('status');
+        const aguaCasa = document.getElementById('aguaCasa');
+        const nivelCasa = document.getElementById('nivelCasa');
+        const percentCasa = document.getElementById('percentCasa');
+        const aguaCozinha = document.getElementById('aguaCozinha');
+        const nivelCozinha = document.getElementById('nivelCozinha');
+        const percentCozinha = document.getElementById('percentCozinha');
+        const timestampDiv = document.getElementById('timestamp');
+        const alertasDiv = document.getElementById('alertas');
+
+        // Variáveis
+        let ultimaAtualizacao = null;
+
+        // Função para formatar hora
+        function formatarHora(timestamp) {
+            if (!timestamp) return '--:--:--';
+            const data = new Date(timestamp * 1000);
+            return data.toLocaleTimeString('pt-BR');
+        }
+
+        // Função para atualizar a interface
+        function atualizarInterface() {
+            // Atualiza visual da Casa
+            if (window.nivelCasa !== undefined) {
+                const altura = Math.min(100, Math.max(0, window.nivelCasa));
+                aguaCasa.style.height = altura + '%';
+                nivelCasa.innerText = Math.round(altura) + '%';
+                percentCasa.innerText = Math.round(altura) + '%';
+            }
+            
+            // Atualiza visual da Cozinha
+            if (window.nivelCozinha !== undefined) {
+                const altura = Math.min(100, Math.max(0, window.nivelCozinha));
+                aguaCozinha.style.height = altura + '%';
+                nivelCozinha.innerText = Math.round(altura) + '%';
+                percentCozinha.innerText = Math.round(altura) + '%';
+            }
+            
+            // Verificar alertas
+            verificarAlertas();
+        }
         
-        for (const ip of possiveisIPs) {
-            try {
-                const response = await fetch(`http://${ip}/api/status`, {
-                    timeout: 2000,
-                    method: 'GET'
-                });
-                if (response.ok) {
-                    ESP32_IP = ip;
-                    localStorage.setItem('esp32_ip', ip);
-                    return true;
+        // Função para verificar alertas de nível
+        function verificarAlertas() {
+            const alertas = [];
+            
+            if (window.nivelCasa !== undefined) {
+                if (window.nivelCasa < 20) {
+                    alertas.push('⚠️ ALERTA: Caixa da Casa está com nível BAIXO!');
+                } else if (window.nivelCasa > 95) {
+                    alertas.push('✅ ATENÇÃO: Caixa da Casa está quase CHEIA!');
                 }
-            } catch(e) {
-                continue;
             }
-        }
-        
-        // Se não encontrou, tenta mDNS (requer que o ESP32 esteja configurado com .local)
-        try {
-            const response = await fetch('http://boiato.local/api/status', { timeout: 2000 });
-            if (response.ok) {
-                ESP32_IP = 'boiato.local';
-                localStorage.setItem('esp32_ip', 'boiato.local');
-                return true;
-            }
-        } catch(e) {}
-        
-        return false;
-    }
-    
-    // ==========================================
-    // FUNÇÕES DE COMUNICAÇÃO COM ESP32
-    // ==========================================
-    
-    async function carregarDadosIniciais() {
-        if (!ESP32_IP) {
-            const encontrado = await descobrirESP32();
-            if (!encontrado) {
-                document.getElementById('statusConexao').innerHTML = '❌ ESP32 não encontrado na rede';
-                document.getElementById('statusConexao').className = 'status-conexao status-desconectado';
-                return false;
-            }
-        }
-        
-        document.getElementById('statusConexao').innerHTML = '📡 Conectado ao ESP32';
-        document.getElementById('statusConexao').className = 'status-conexao status-conectado';
-        document.getElementById('infoIP').innerHTML = `🌐 ESP32 IP: ${ESP32_IP}`;
-        
-        try {
-            // Busca status atual
-            const statusResponse = await fetch(`http://${ESP32_IP}/api/status`);
-            const dados = await statusResponse.json();
             
-            niveis.casa = dados.casa;
-            niveis.cozinha = dados.cozinha;
-            atualizarDisplayNiveis();
+            if (window.nivelCozinha !== undefined) {
+                if (window.nivelCozinha < 20) {
+                    alertas.push('⚠️ ALERTA: Caixa da Cozinha está com nível BAIXO!');
+                } else if (window.nivelCozinha > 95) {
+                    alertas.push('✅ ATENÇÃO: Caixa da Cozinha está quase CHEIA!');
+                }
+            }
             
-            if (dados.bomba_ativa && dados.bomba_tempo > 0) {
-                tempos.Bomba = Date.now() + (dados.bomba_tempo * 1000);
+            if (alertas.length > 0) {
+                alertasDiv.style.display = 'block';
+                alertasDiv.className = 'alerta ' + (window.nivelCasa < 20 || window.nivelCozinha < 20 ? 'baixo' : 'alto');
+                alertasDiv.innerHTML = alertas.join('<br>');
             } else {
-                tempos.Bomba = 0;
+                alertasDiv.style.display = 'none';
             }
-            
-            if (dados.valvula_ativa && dados.valvula_tempo > 0) {
-                tempos.Concessionaria = Date.now() + (dados.valvula_tempo * 1000);
-            } else {
-                tempos.Concessionaria = 0;
+        }
+
+        // ==========================================
+        // CONEXÃO COM FIREBASE EM TEMPO REAL
+        // ==========================================
+        
+        // Escutar mudanças no nível da Casa
+        const casaRef = database.ref('niveis/casa');
+        casaRef.on('value', (snapshot) => {
+            const nivel = snapshot.val();
+            if (nivel !== null) {
+                window.nivelCasa = nivel;
+                atualizarInterface();
+                
+                // Atualiza status
+                statusDiv.innerHTML = '✅ Conectado ao Firebase';
+                statusDiv.className = 'status online';
             }
-            atualizarPainel();
-            
-            // Busca histórico
-            const histResponse = await fetch(`http://${ESP32_IP}/api/historico`);
-            const historico = await histResponse.json();
-            
-            for (let i = 0; i < historico.length && i < 7; i++) {
-                if (historico[i].casa && historico[i].cozinha) {
-                    historicoCasa[i] = historico[i].casa;
-                    historicoCozinha[i] = historico[i].cozinha;
-                    historicoConsumo[i] = {
-                        casa: historico[i].casa,
-                        cozinha: historico[i].cozinha
-                    };
-                } else {
-                    // Fallback para dados vazios
-                    historicoCasa[i] = Array(8).fill(0);
-                    historicoCozinha[i] = Array(8).fill(0);
-                    historicoConsumo[i] = {
-                        casa: Array(8).fill(0),
-                        cozinha: Array(8).fill(0)
-                    };
-                }
-            }
-            
-            inicializarGraficos();
-            conectarWebSocket();
-            return true;
-            
-        } catch (error) {
-            console.error('Erro ao carregar dados:', error);
-            document.getElementById('statusConexao').innerHTML = '⚠️ Erro de comunicação';
-            document.getElementById('statusConexao').className = 'status-conexao status-desconectado';
-            return false;
-        }
-    }
-    
-    function conectarWebSocket() {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.close();
-        }
-        
-        ws = new WebSocket(`ws://${ESP32_IP}:81`);
-        
-        ws.onopen = function() {
-            console.log('WebSocket conectado');
-            document.getElementById('statusConexao').innerHTML = '✅ Conectado em Tempo Real';
-            document.getElementById('statusConexao').className = 'status-conexao status-conectado';
-        };
-        
-        ws.onmessage = function(event) {
-            try {
-                const dados = JSON.parse(event.data);
-                
-                // Atualiza níveis
-                if (dados.casa !== undefined) niveis.casa = dados.casa;
-                if (dados.cozinha !== undefined) niveis.cozinha = dados.cozinha;
-                atualizarDisplayNiveis();
-                verificarAlertas();
-                
-                // Atualiza timers
-                if (dados.bomba_ativa && dados.bomba_tempo > 0) {
-                    tempos.Bomba = Date.now() + (dados.bomba_tempo * 1000);
-                } else {
-                    tempos.Bomba = 0;
-                }
-                
-                if (dados.valvula_ativa && dados.valvula_tempo > 0) {
-                    tempos.Concessionaria = Date.now() + (dados.valvula_tempo * 1000);
-                } else {
-                    tempos.Concessionaria = 0;
-                }
-                
-                atualizarPainel();
-                
-            } catch(e) {
-                console.error('Erro ao processar WebSocket:', e);
-            }
-        };
-        
-        ws.onerror = function(error) {
-            console.error('WebSocket error:', error);
-            document.getElementById('statusConexao').innerHTML = '🔌 Reconectando...';
-            document.getElementById('statusConexao').className = 'status-conexao status-conectando';
-        };
-        
-        ws.onclose = function() {
-            console.log('WebSocket desconectado');
-            setTimeout(() => {
-                if (ESP32_IP) conectarWebSocket();
-            }, 5000);
-        };
-    }
-    
-    // ==========================================
-    // FUNÇÕES DE CONTROLE
-    // ==========================================
-    
-    const MAX_BOMBA_SEGUNDOS = 7200; // 2 horas em segundos
-    
-    async function enviarComando(comando) {
-        if (!ESP32_IP) return false;
-        
-        try {
-            const response = await fetch(`http://${ESP32_IP}/api/control`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    senha: '1981',
-                    ...comando
-                })
-            });
-            
-            if (response.ok) {
-                console.log('Comando enviado:', comando);
-                return true;
-            } else {
-                console.error('Erro no comando:', response.status);
-                return false;
-            }
-        } catch (error) {
-            console.error('Erro ao enviar comando:', error);
-            return false;
-        }
-    }
-    
-    async function adicionarTempoBomba(minutos) {
-        const segundosAdicionais = minutos * 60;
-        
-        // Verifica limite máximo de 2 horas
-        let tempoAtual = 0;
-        if (tempos.Bomba > Date.now()) {
-            tempoAtual = Math.floor((tempos.Bomba - Date.now()) / 1000);
-        }
-        
-        const novoTempo = tempoAtual + segundosAdicionais;
-        
-        if (novoTempo > MAX_BOMBA_SEGUNDOS) {
-            alert(`A bomba não pode ultrapassar 2 horas contínuas!\nTempo atual: ${formatarSegundos(tempoAtual)}\nMáximo permitido: 2 horas`);
-            return;
-        }
-        
-        await enviarComando({
-            bomba: 'add',
-            minutos: minutos
+        }, (error) => {
+            console.error('Erro na leitura da Casa:', error);
+            statusDiv.innerHTML = '⚠️ Erro de conexão';
+            statusDiv.className = 'status offline';
         });
-    }
-    
-    async function desligarBomba() {
-        await enviarComando({
-            bomba: 'desligar'
+
+        // Escutar mudanças no nível da Cozinha
+        const cozinhaRef = database.ref('niveis/cozinha');
+        cozinhaRef.on('value', (snapshot) => {
+            const nivel = snapshot.val();
+            if (nivel !== null) {
+                window.nivelCozinha = nivel;
+                atualizarInterface();
+            }
         });
-    }
-    
-    async function adicionarTempoValvula(minutos) {
-        await enviarComando({
-            valvula: 'add',
-            minutos: minutos
+
+        // Escutar timestamp da última atualização
+        const timestampRef = database.ref('niveis/ultima_atualizacao');
+        timestampRef.on('value', (snapshot) => {
+            const timestamp = snapshot.val();
+            if (timestamp !== null) {
+                ultimaAtualizacao = timestamp;
+                timestampDiv.innerHTML = `📡 Última atualização: ${formatarHora(timestamp)}`;
+            }
         });
-    }
-    
-    async function desligarValvula() {
-        await enviarComando({
-            valvula: 'desligar'
-        });
-    }
-    
-    function formatarSegundos(segundos) {
-        const h = Math.floor(segundos / 3600);
-        const m = Math.floor((segundos % 3600) / 60);
-        const s = segundos % 60;
-        if (h > 0) return `${h}h ${m}m ${s}s`;
-        if (m > 0) return `${m}m ${s}s`;
-        return `${s}s`;
-    }
-    
-    function formatarTempoExtenso(tempoFim) {
-        const agora = Date.now();
-        if (tempoFim <= agora) return "Desligado";
         
-        let segundosTotais = Math.floor((tempoFim - agora) / 1000);
-        const dias = Math.floor(segundosTotais / 86400);
-        segundosTotais %= 86400;
-        const horas = Math.floor(segundosTotais / 3600);
-        segundosTotais %= 3600;
-        const minutos = Math.floor(segundosTotais / 60);
-        const segundos = segundosTotais % 60;
+        // Timeout para mostrar que está aguardando dados
+        setTimeout(() => {
+            if (window.nivelCasa === undefined && window.nivelCozinha === undefined) {
+                statusDiv.innerHTML = '⏳ Aguardando dados do ESP32...';
+                statusDiv.className = 'status waiting';
+                timestampDiv.innerHTML = 'Aguardando primeiro envio de dados do ESP32...';
+            }
+        }, 3000);
         
-        let retorno = "";
-        if (dias > 0) retorno += `${dias}d `;
-        if (horas > 0 || dias > 0) retorno += `${horas.toString().padStart(2, '0')}h `;
-        retorno += `${minutos.toString().padStart(2, '0')}m `;
-        retorno += `${segundos.toString().padStart(2, '0')}s`;
-        
-        return retorno;
-    }
-    
-    function atualizarPainel() {
-        const displayBomba = document.getElementById('display-bomba');
-        const displayConcessionaria = document.getElementById('display-concessionaria');
-        
-        const tempoBomba = formatarTempoExtenso(tempos.Bomba);
-        const tempoValvula = formatarTempoExtenso(tempos.Concessionaria);
-        
-        if (displayBomba) {
-            displayBomba.innerText = tempoBomba;
-            displayBomba.className = tempoBomba === "Desligado" ? "timer timer-inativo" : "timer timer-ativo";
-        }
-        
-        if (displayConcessionaria) {
-            displayConcessionaria.innerText = tempoValvula;
-            displayConcessionaria.className = tempoValvula === "Desligado" ? "timer timer-inativo" : "timer timer-ativo";
-        }
-    }
-    
-    // ==========================================
-    // FUNÇÕES DA INTERFACE
-    // ==========================================
-    
-    function atualizarDisplayNiveis() {
-        const aguaCasa = document.getElementById('agua-casa');
-        const percentCasa = document.getElementById('percent-casa');
-        const aguaCozinha = document.getElementById('agua-cozinha');
-        const percentCozinha = document.getElementById('percent-cozinha');
-        
-        if (aguaCasa) aguaCasa.style.height = `${niveis.casa}%`;
-        if (percentCasa) percentCasa.innerText = `${Math.round(niveis.casa)}%`;
-        if (aguaCozinha) aguaCozinha.style.height = `${niveis.cozinha}%`;
-        if (percentCozinha) percentCozinha.innerText = `${Math.round(niveis.cozinha)}%`;
-    }
-    
-    function verificarAlertas() {
-        const alertaDiv = document.getElementById('alertas');
-        if (!alertaDiv) return;
-        
-        let alertas = [];
-        if (niveis.casa < 20) alertas.push('⚠️ Casa com nível BAIXO!');
-        if (niveis.cozinha < 20) alertas.push('⚠️ Cozinha com nível BAIXO!');
-        if (niveis.casa > 95) alertas.push('✅ Casa com nível ALTO - Transbordamento iminente!');
-        if (niveis.cozinha > 95) alertas.push('✅ Cozinha com nível ALTO - Transbordamento iminente!');
-        
-        if (alertas.length > 0) {
-            alertaDiv.style.display = 'block';
-            alertaDiv.innerHTML = alertas.join('<br>');
-            alertaDiv.className = `alerta-nivel ${niveis.casa < 20 || niveis.cozinha < 20 ? 'alerta-baixo' : 'alerta-alto'}`;
-        } else {
-            alertaDiv.style.display = 'none';
-        }
-    }
-    
-    function getDataFormatada(diasAtras) {
-        const data = new Date();
-        data.setDate(data.getDate() - diasAtras);
-        const dia = data.getDate().toString().padStart(2, '0');
-        const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-        const mes = meses[data.getMonth()];
-        return `${dia}/${mes}`;
-    }
-    
-    function getOrdemDias() {
-        const ordem = [];
-        for (let i = 1; i <= 7; i++) {
-            ordem.push(i);
-        }
-        return ordem;
-    }
-    
-    function inicializarGraficos() {
-        const container = document.getElementById('graficos-container');
-        if (!container) return;
-        
-        container.innerHTML = '';
-        charts = {};
-        
-        const ordemDias = getOrdemDias();
-        
-        for (let idx = 0; idx < ordemDias.length; idx++) {
-            const diasAtras = ordemDias[idx];
-            const diaIndex = (new Date().getDay() - diasAtras + 7) % 7;
-            const dataLabel = getDataFormatada(diasAtras);
-            const nomeDia = diasSemana[diaIndex];
-            
-            const dadosCasa = historicoCasa[diaIndex] || Array(8).fill(0);
-            const dadosCozinha = historicoCozinha[diaIndex] || Array(8).fill(0);
-            
-            const card = document.createElement('div');
-            card.className = 'card-grafico';
-            card.innerHTML = `
-                <h4>${dataLabel} - ${nomeDia}</h4>
-                <div class="canvas-container">
-                    <canvas id="chart-${idx}"></canvas>
-                </div>
-                <div class="legenda-cores">
-                    <div class="legenda-item">
-                        <div class="cor-legenda" style="background: #10b981;"></div>
-                        <span>Casa</span>
-                    </div>
-                    <div class="legenda-item">
-                        <div class="cor-legenda" style="background: #3b82f6;"></div>
-                        <span>Cozinha</span>
-                    </div>
-                </div>
-            `;
-            container.appendChild(card);
-            
-            const canvas = document.getElementById(`chart-${idx}`);
-            if (!canvas) continue;
-            
-            const ctx = canvas.getContext('2d');
-            
-            charts[idx] = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: horarios,
-                    datasets: [
-                        {
-                            label: 'Casa',
-                            data: dadosCasa,
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.05)',
-                            borderWidth: 2,
-                            tension: 0.3,
-                            fill: false,
-                            pointBackgroundColor: '#10b981',
-                            pointBorderColor: '#0f172a',
-                            pointRadius: 3,
-                            pointHoverRadius: 5
-                        },
-                        {
-                            label: 'Cozinha',
-                            data: dadosCozinha,
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.05)',
-                            borderWidth: 2,
-                            tension: 0.3,
-                            fill: false,
-                            pointBackgroundColor: '#3b82f6',
-                            pointBorderColor: '#0f172a',
-                            pointRadius: 3,
-                            pointHoverRadius: 5
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `${context.dataset.label}: ${context.parsed.y}%`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            grid: { color: '#334155' },
-                            ticks: {
-                                color: '#94a3b8',
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            }
-                        },
-                        x: {
-                            grid: { color: '#334155' },
-                            ticks: { 
-                                color: '#94a3b8',
-                                font: { size: 9 },
-                                rotation: 45
-                            }
-                        }
-                    }
-                }
-            });
-        }
-    }
-    
-    // ==========================================
-    // LOOP DE ATUALIZAÇÃO DOS TIMERS (CLIENT-SIDE)
-    // ==========================================
-    
-    setInterval(atualizarPainel, 1000);
-    
-    // ==========================================
-    // INICIALIZAÇÃO
-    // ==========================================
-    
-    carregarDadosIniciais();
-    
-    console.log('✅ Sistema inicializado - Modo Real');
-</script>
+        console.log('✅ Sistema inicializado - Aguardando dados do Firebase');
+    </script>
 </body>
 </html>
