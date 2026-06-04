@@ -156,14 +156,6 @@
             text-align: center;
             font-family: monospace;
         }
-        
-        .dados-em-branco {
-            text-align: center;
-            padding: 20px;
-            background: #1e293b;
-            border-radius: 10px;
-            margin: 10px 0;
-        }
     </style>
 </head>
 <body>
@@ -234,7 +226,7 @@
         </div>
         
         <div class="debug-info" id="debug-info">
-            Aguardando dados do ESP32...
+            Inicializando...
         </div>
     </div>
 
@@ -266,8 +258,8 @@
         const horariosCompletos = ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
         const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
         
-        let dadosHojeCasa = Array(8).fill(null);
-        let dadosHojeCozinha = Array(8).fill(null);
+        let dadosHojeCasa = Array(8).fill(0);
+        let dadosHojeCozinha = Array(8).fill(0);
         let maxPontosHoje = 1;
         let dadosRecebidos = false;
 
@@ -338,8 +330,8 @@
                 let dadosCasaHoje = [], dadosCozinhaHoje = [];
                 
                 for (let i = 0; i < maxPontosHoje; i++) {
-                    dadosCasaHoje.push(dadosHojeCasa[i] !== null ? dadosHojeCasa[i] : 0);
-                    dadosCozinhaHoje.push(dadosHojeCozinha[i] !== null ? dadosHojeCozinha[i] : 0);
+                    dadosCasaHoje.push(dadosHojeCasa[i]);
+                    dadosCozinhaHoje.push(dadosHojeCozinha[i]);
                 }
                 
                 chartHoje.data.labels = horariosParciais;
@@ -359,8 +351,8 @@
             
             let dadosCasaHoje = [], dadosCozinhaHoje = [];
             for (let i = 0; i < maxPontosHoje; i++) {
-                dadosCasaHoje.push(dadosHojeCasa[i] !== null ? dadosHojeCasa[i] : 0);
-                dadosCozinhaHoje.push(dadosHojeCozinha[i] !== null ? dadosHojeCozinha[i] : 0);
+                dadosCasaHoje.push(dadosHojeCasa[i]);
+                dadosCozinhaHoje.push(dadosHojeCozinha[i]);
             }
             
             const ctx = document.getElementById('chart-hoje').getContext('2d');
@@ -390,30 +382,97 @@
         }
 
         // ==========================================
-        // GRÁFICOS DO HISTÓRICO (Formato ANTIGO - historico)
+        // PROCESSAR HISTÓRICO V2 (CORRETO)
         // ==========================================
-        function inicializarGraficosHistoricoAntigo(historicoData) {
+        function processarHistoricoV2(leituras) {
+            if (!leituras || leituras.length === 0) {
+                console.log('Nenhuma leitura no histórico V2');
+                return false;
+            }
+            
+            console.log('Processando', leituras.length, 'leituras do histórico V2');
+            
+            // Agrupar leituras por data
+            const diasMap = new Map();
+            
+            leituras.forEach(leitura => {
+                if (!leitura.dt) return;
+                
+                const dataLeitura = leitura.dt.split(' ')[0];
+                const hora = leitura.h || parseInt(leitura.dt.split(' ')[1].split(':')[0]);
+                const faixa = Math.floor(hora / 3);
+                const nivelCasa = leitura.c !== undefined ? leitura.c : 0;
+                const nivelCozinha = leitura.k !== undefined ? leitura.k : 0;
+                
+                if (!diasMap.has(dataLeitura)) {
+                    diasMap.set(dataLeitura, {
+                        casa: Array(8).fill(0),
+                        cozinha: Array(8).fill(0),
+                        data: dataLeitura
+                    });
+                }
+                
+                const dia = diasMap.get(dataLeitura);
+                if (faixa >= 0 && faixa < 8) {
+                    dia.casa[faixa] = nivelCasa;
+                    dia.cozinha[faixa] = nivelCozinha;
+                    console.log(`  ${dataLeitura} faixa ${faixa} (${hora}h): Casa=${nivelCasa}% Cozinha=${nivelCozinha}%`);
+                }
+            });
+            
+            // Atualizar dados de hoje se existir
+            const hoje = new Date().toISOString().split('T')[0];
+            if (diasMap.has(hoje)) {
+                const hojeData = diasMap.get(hoje);
+                console.log('Atualizando dados de hoje com histórico V2');
+                for (let i = 0; i < 8; i++) {
+                    if (hojeData.casa[i] > 0 || hojeData.cozinha[i] > 0) {
+                        dadosHojeCasa[i] = hojeData.casa[i];
+                        dadosHojeCozinha[i] = hojeData.cozinha[i];
+                        console.log(`  Faixa ${i}: Casa=${dadosHojeCasa[i]}% Cozinha=${dadosHojeCozinha[i]}%`);
+                    }
+                }
+                inicializarGraficoHoje();
+            }
+            
+            // Preparar array para os dias anteriores (índice 0 = hoje, 1 = ontem, etc.)
+            const historicoArray = [];
+            for (let i = 0; i <= 6; i++) {
+                const data = new Date();
+                data.setDate(data.getDate() - i);
+                const dataStr = data.toISOString().split('T')[0];
+                
+                if (diasMap.has(dataStr)) {
+                    historicoArray[i] = diasMap.get(dataStr);
+                } else {
+                    historicoArray[i] = { casa: Array(8).fill(0), cozinha: Array(8).fill(0), data: dataStr };
+                }
+            }
+            
+            // Exibir gráficos dos dias anteriores (índice 1 a 6)
+            exibirGraficosHistorico(historicoArray);
+            return true;
+        }
+        
+        function exibirGraficosHistorico(historicoArray) {
             const container = document.getElementById('graficos-container');
             if (!container) return;
-            
-            if (!historicoData || !Array.isArray(historicoData)) {
-                container.innerHTML = '<div class="loading">📭 Nenhum dado histórico encontrado. Aguardando ESP32...</div>';
-                return;
-            }
             
             container.innerHTML = '';
             charts = {};
             
+            // Mostrar dias 1 a 6 (ontem até 6 dias atrás)
             for (let diasAtras = 1; diasAtras <= 6; diasAtras++) {
+                const diaData = historicoArray[diasAtras];
+                if (!diaData) continue;
+                
                 const dataLabel = getDataFormatada(diasAtras);
                 const nomeDia = getDiaSemana(diasAtras);
-                let dadosCasa = Array(8).fill(0);
-                let dadosCozinha = Array(8).fill(0);
+                const dadosCasa = diaData.casa || Array(8).fill(0);
+                const dadosCozinha = diaData.cozinha || Array(8).fill(0);
                 
-                if (historicoData[diasAtras]) {
-                    dadosCasa = historicoData[diasAtras].casa || Array(8).fill(0);
-                    dadosCozinha = historicoData[diasAtras].cozinha || Array(8).fill(0);
-                }
+                // Verificar se tem dados não-zero para mostrar
+                const temDados = dadosCasa.some(v => v > 0) || dadosCozinha.some(v => v > 0);
                 
                 const card = document.createElement('div');
                 card.className = 'card-grafico';
@@ -426,6 +485,7 @@
                         <div class="legenda-item"><div class="cor-legenda" style="background: #10b981;"></div><span>Casa</span></div>
                         <div class="legenda-item"><div class="cor-legenda" style="background: #3b82f6;"></div><span>Cozinha</span></div>
                     </div>
+                    ${!temDados ? '<div class="info-parcial">⚠️ Sem dados registrados para este dia</div>' : ''}
                 `;
                 container.appendChild(card);
                 
@@ -457,98 +517,55 @@
         }
 
         // ==========================================
-        // FUNÇÃO PARA TENTAR LER MÚLTIPLOS ENDPOINTS
+        // BUSCAR DADOS DIRETAMENTE (FALLBACK)
         // ==========================================
-        function carregarHistorico() {
-            // Tentar ler do formato V2 primeiro
-            const historicoV2Ref = database.ref('histv2');
-            historicoV2Ref.once('value', (snapshot) => {
-                const data = snapshot.val();
-                if (data && data.l && Array.isArray(data.l) && data.l.length > 0) {
-                    console.log('✅ Histórico V2 encontrado!', data.l.length, 'leituras');
-                    document.getElementById('debug-info').innerHTML = `📊 Usando API V2 | ${data.l.length} leituras | Update: ${data.up || 'N/A'}`;
-                    processarHistoricoV2(data.l);
-                } else {
-                    console.log('⚠️ Nenhum dado no histv2, tentando historico antigo...');
-                    document.getElementById('debug-info').innerHTML = `⚠️ Tentando formato antigo...`;
-                    carregarHistoricoAntigo();
-                }
-            }).catch((error) => {
-                console.error('Erro ao ler histv2:', error);
-                carregarHistoricoAntigo();
-            });
-        }
-        
-        function carregarHistoricoAntigo() {
-            const historicoRef = database.ref('historico');
-            historicoRef.once('value', (snapshot) => {
-                const data = snapshot.val();
-                if (data && Array.isArray(data)) {
-                    console.log('✅ Histórico formato antigo encontrado!');
-                    document.getElementById('debug-info').innerHTML = `📊 Usando formato antigo (historico)`;
-                    inicializarGraficosHistoricoAntigo(data);
-                } else {
-                    console.log('⚠️ Nenhum histórico encontrado em nenhum formato');
-                    document.getElementById('debug-info').innerHTML = `⚠️ Aguardando ESP32 enviar dados para /niveis e /historico ou /histv2`;
-                    const container = document.getElementById('graficos-container');
-                    if (container) {
-                        container.innerHTML = '<div class="dados-em-branco">📭 Nenhum dado histórico encontrado.<br><br>⚠️ Verifique se o ESP32 está conectado ao WiFi e enviando dados para o Firebase.<br><br>📡 Dados atuais estão sendo recebidos normalmente.</div>';
+        async function buscarDadosDireto() {
+            try {
+                console.log('Buscando dados diretamente do Firebase...');
+                
+                // Buscar níveis atuais
+                const respNiveis = await fetch('https://nivelcaixa-2dbd8-default-rtdb.firebaseio.com/niveis.json');
+                const dadosNiveis = await respNiveis.json();
+                
+                if (dadosNiveis) {
+                    niveis.casa = dadosNiveis.casa || 0;
+                    niveis.cozinha = dadosNiveis.cozinha || 0;
+                    atualizarDisplayNiveis();
+                    atualizarDadosHoje();
+                    dadosRecebidos = true;
+                    
+                    document.getElementById('status').innerHTML = '✅ Dados recebidos';
+                    document.getElementById('status').className = 'status online';
+                    document.getElementById('debug-info').innerHTML = `✅ Níveis: Casa=${niveis.casa}% Cozinha=${niveis.cozinha}%`;
+                    
+                    if (dadosNiveis.ultima_atualizacao) {
+                        document.getElementById('timestamp').innerHTML = `📡 Última atualização: ${formatarHora(dadosNiveis.ultima_atualizacao)}`;
                     }
                 }
-            }).catch((error) => {
-                console.error('Erro ao ler historico:', error);
-                document.getElementById('debug-info').innerHTML = `❌ Erro: ${error.message}`;
-            });
-        }
-        
-        function processarHistoricoV2(leituras) {
-            // Agrupar leituras por data
-            const diasMap = new Map();
-            
-            leituras.forEach(leitura => {
-                if (!leitura.dt) return;
-                const dataLeitura = leitura.dt.split(' ')[0];
-                const hora = leitura.h || parseInt(leitura.dt.split(' ')[1].split(':')[0]);
-                const faixa = Math.floor(hora / 3);
-                const nivelCasa = leitura.c || 0;
-                const nivelCozinha = leitura.k || 0;
                 
-                if (!diasMap.has(dataLeitura)) {
-                    diasMap.set(dataLeitura, {
-                        casa: Array(8).fill(0),
-                        cozinha: Array(8).fill(0)
-                    });
-                }
+                // Buscar histórico V2
+                const respHist = await fetch('https://nivelcaixa-2dbd8-default-rtdb.firebaseio.com/histv2.json');
+                const dadosHist = await respHist.json();
                 
-                const dia = diasMap.get(dataLeitura);
-                if (faixa >= 0 && faixa < 8) {
-                    dia.casa[faixa] = nivelCasa;
-                    dia.cozinha[faixa] = nivelCozinha;
-                }
-            });
-            
-            // Converter para array no formato esperado (índice 0 = hoje, 1 = ontem, etc.)
-            const hoje = new Date().toISOString().split('T')[0];
-            const historicoArray = [];
-            
-            for (let i = 0; i <= 6; i++) {
-                const data = new Date();
-                data.setDate(data.getDate() - i);
-                const dataStr = data.toISOString().split('T')[0];
-                
-                if (diasMap.has(dataStr)) {
-                    historicoArray[i] = diasMap.get(dataStr);
+                if (dadosHist && dadosHist.l && dadosHist.l.length > 0) {
+                    console.log('Histórico V2 encontrado:', dadosHist.l.length, 'leituras');
+                    document.getElementById('debug-info').innerHTML += ` | HistV2: ${dadosHist.l.length} leituras`;
+                    processarHistoricoV2(dadosHist.l);
                 } else {
-                    historicoArray[i] = { casa: Array(8).fill(0), cozinha: Array(8).fill(0) };
+                    console.log('Nenhum histórico V2 encontrado');
+                    document.getElementById('debug-info').innerHTML += ' | Nenhum histórico V2';
                 }
+            } catch (e) {
+                console.error('Erro ao buscar dados:', e);
+                document.getElementById('debug-info').innerHTML = `❌ Erro: ${e.message}`;
             }
-            
-            inicializarGraficosHistoricoAntigo(historicoArray);
         }
 
         // ==========================================
-        // CONEXÃO COM FIREBASE - NÍVEIS ATUAIS
+        // INICIALIZAR LISTENERS DO FIREBASE
         // ==========================================
+        
+        // Listener para níveis atuais
         const niveisRef = database.ref('niveis');
         niveisRef.on('value', (snapshot) => {
             const data = snapshot.val();
@@ -559,44 +576,44 @@
                 atualizarDisplayNiveis();
                 atualizarDadosHoje();
                 
+                document.getElementById('status').innerHTML = '✅ Dados recebidos do ESP32';
+                document.getElementById('status').className = 'status online';
+                document.getElementById('debug-info').innerHTML = `✅ Níveis: Casa=${niveis.casa}% Cozinha=${niveis.cozinha}%`;
+                
                 if (data.ultima_atualizacao) {
                     document.getElementById('timestamp').innerHTML = `📡 Última atualização: ${formatarHora(data.ultima_atualizacao)}`;
                 }
-                
-                document.getElementById('status').innerHTML = '✅ Dados recebidos do ESP32';
-                document.getElementById('status').className = 'status online';
-                document.getElementById('debug-info').innerHTML = `✅ Níveis atualizados | Casa: ${niveis.casa}% | Cozinha: ${niveis.cozinha}%`;
-            } else {
-                document.getElementById('debug-info').innerHTML = `⏳ Aguardando dados do ESP32 no caminho /niveis...`;
             }
         }, (error) => {
-            console.error('Erro ao ler níveis:', error);
-            document.getElementById('status').innerHTML = '⚠️ Erro de conexão com Firebase';
-            document.getElementById('status').className = 'status offline';
-            document.getElementById('debug-info').innerHTML = `❌ Erro: ${error.message}`;
+            console.error('Erro no listener:', error);
+            buscarDadosDireto();
         });
         
-        // Tentar carregar histórico após 1 segundo
-        setTimeout(() => {
-            carregarHistorico();
-        }, 1000);
-        
-        // Tentar novamente a cada 30 segundos se não houver dados
-        setInterval(() => {
-            if (!dadosRecebidos) {
-                console.log('Re-tentando carregar histórico...');
-                carregarHistorico();
+        // Listener para histórico V2
+        const historicoV2Ref = database.ref('histv2');
+        historicoV2Ref.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data && data.l && data.l.length > 0) {
+                console.log('Histórico V2 recebido via listener:', data.l.length, 'leituras');
+                document.getElementById('debug-info').innerHTML = `✅ HistV2: ${data.l.length} leituras | Update: ${data.up || 'N/A'}`;
+                processarHistoricoV2(data.l);
             }
-        }, 30000);
+        }, (error) => {
+            console.error('Erro no listener do histórico:', error);
+        });
         
-        // Inicializar gráfico vazio
+        // Timeout para fallback
+        setTimeout(() => {
+            if (!dadosRecebidos) {
+                console.log('Timeout, usando fallback...');
+                buscarDadosDireto();
+            }
+        }, 5000);
+        
+        // Inicializar gráfico
         setTimeout(() => { 
             inicializarGraficoHoje(); 
         }, 500);
-        
-        // Status inicial
-        document.getElementById('status').innerHTML = '🔄 Conectando ao Firebase...';
-        document.getElementById('status').className = 'status waiting';
         
         console.log('✅ Sistema de monitoramento inicializado');
     </script>
