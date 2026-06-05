@@ -16,7 +16,37 @@
             padding: 20px;
             min-height: 100vh;
         }
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1200px; margin: 0 auto; position: relative; }
+        
+        /* Botão discreto no canto superior */
+        .btn-ordenar {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            color: #38bdf8;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-ordenar:hover {
+            background: rgba(56, 189, 248, 0.3);
+            border-color: #38bdf8;
+            transform: scale(1.05);
+        }
+        .btn-ordenar:active {
+            transform: scale(0.98);
+        }
+        
         h1 {
             text-align: center;
             font-size: 2.5em;
@@ -156,10 +186,39 @@
             text-align: center;
             font-family: monospace;
         }
+        
+        /* Rodapé com informações do programador */
+        .footer-info {
+            margin-top: 40px;
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid #334155;
+            font-size: 12px;
+            color: #64748b;
+        }
+        .footer-info strong {
+            color: #38bdf8;
+            font-weight: 600;
+        }
+        .data-atualizacao {
+            font-size: 11px;
+            color: #10b981;
+            margin-top: 8px;
+        }
+        .compilacao-info {
+            font-size: 10px;
+            color: #475569;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Botão discreto para ordenar gráficos -->
+        <button class="btn-ordenar" id="btnOrdenar">
+            🔄 Ordenar Gráficos
+        </button>
+        
         <h1>💧 BOIATO</h1>
         <div class="subtitle">Sistema de Monitoramento de Nível d'Água</div>
         
@@ -228,9 +287,31 @@
         <div class="debug-info" id="debug-info">
             Inicializando...
         </div>
+        
+        <!-- Rodapé com informações -->
+        <div class="footer-info">
+            <div>💡 Desenvolvido por <strong>Thiago Boiato Pinto</strong> | Sistema de Monitoramento Inteligente</div>
+            <div class="data-atualizacao" id="ultimaAtualizacaoDados">📡 Última atualização dos dados: Aguardando...</div>
+            <div class="compilacao-info" id="compilacaoInfo"></div>
+        </div>
     </div>
 
     <script>
+        // ==========================================
+        // DATA DE COMPILAÇÃO DA PÁGINA
+        // ==========================================
+        const dataCompilacao = new Date().toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        
+        // Exibir data de compilação no rodapé
+        document.getElementById('compilacaoInfo').innerHTML = `🛠️ Última compilação da página: ${dataCompilacao}`;
+        
         // ==========================================
         // CONFIGURAÇÕES DO FIREBASE
         // ==========================================
@@ -254,6 +335,8 @@
         let niveis = { casa: 0, cozinha: 0 };
         let chartHoje = null;
         let charts = {};
+        let ordemCrescente = true; // true = mais antigo primeiro, false = mais recente primeiro
+        let historicoArrayGlobal = []; // Armazenar histórico para reordenar
         
         const horariosCompletos = ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
         const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -262,6 +345,7 @@
         let dadosHojeCozinha = Array(8).fill(0);
         let maxPontosHoje = 1;
         let dadosRecebidos = false;
+        let ultimaAtualizacaoTimestamp = null;
 
         // ==========================================
         // FUNÇÕES AUXILIARES
@@ -281,6 +365,12 @@
             return `${data.getDate().toString().padStart(2, '0')}/${(data.getMonth() + 1).toString().padStart(2, '0')}`;
         }
         
+        function getDataCompleta(diasAtras) {
+            const data = new Date();
+            data.setDate(data.getDate() - diasAtras);
+            return data;
+        }
+        
         function getDiaSemana(diasAtras) {
             const data = new Date();
             data.setDate(data.getDate() - diasAtras);
@@ -291,6 +381,19 @@
             if (!timestamp) return '--:--:--';
             const data = new Date(timestamp * 1000);
             return data.toLocaleTimeString('pt-BR');
+        }
+        
+        function formatarDataHoraCompleta(timestamp) {
+            if (!timestamp) return 'Aguardando...';
+            const data = new Date(timestamp * 1000);
+            return data.toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
         }
 
         // ==========================================
@@ -408,7 +511,8 @@
                     diasMap.set(dataLeitura, {
                         casa: Array(8).fill(0),
                         cozinha: Array(8).fill(0),
-                        data: dataLeitura
+                        data: dataLeitura,
+                        dataObj: new Date(dataLeitura)
                     });
                 }
                 
@@ -445,11 +549,17 @@
                 if (diasMap.has(dataStr)) {
                     historicoArray[i] = diasMap.get(dataStr);
                 } else {
-                    historicoArray[i] = { casa: Array(8).fill(0), cozinha: Array(8).fill(0), data: dataStr };
+                    historicoArray[i] = { 
+                        casa: Array(8).fill(0), 
+                        cozinha: Array(8).fill(0), 
+                        data: dataStr,
+                        dataObj: data
+                    };
                 }
             }
             
-            // Exibir gráficos dos dias anteriores (índice 1 a 6)
+            // Armazenar globalmente e exibir
+            historicoArrayGlobal = historicoArray;
             exibirGraficosHistorico(historicoArray);
             return true;
         }
@@ -461,11 +571,28 @@
             container.innerHTML = '';
             charts = {};
             
-            // Mostrar dias 1 a 6 (ontem até 6 dias atrás)
+            // Criar array com os dias a serem exibidos (1 a 6)
+            let diasParaExibir = [];
             for (let diasAtras = 1; diasAtras <= 6; diasAtras++) {
-                const diaData = historicoArray[diasAtras];
-                if (!diaData) continue;
-                
+                if (historicoArray[diasAtras]) {
+                    diasParaExibir.push({
+                        diasAtras: diasAtras,
+                        diaData: historicoArray[diasAtras],
+                        dataObj: historicoArray[diasAtras].dataObj
+                    });
+                }
+            }
+            
+            // Ordenar conforme a escolha do usuário
+            if (!ordemCrescente) {
+                diasParaExibir.sort((a, b) => b.dataObj - a.dataObj);
+            } else {
+                diasParaExibir.sort((a, b) => a.dataObj - b.dataObj);
+            }
+            
+            // Exibir cada dia
+            diasParaExibir.forEach(item => {
+                const { diasAtras, diaData } = item;
                 const dataLabel = getDataFormatada(diasAtras);
                 const nomeDia = getDiaSemana(diasAtras);
                 const dadosCasa = diaData.casa || Array(8).fill(0);
@@ -493,6 +620,7 @@
                     const canvas = document.getElementById(`chart-hist-${diasAtras}`);
                     if (canvas) {
                         const ctx = canvas.getContext('2d');
+                        if (charts[diasAtras]) charts[diasAtras].destroy();
                         charts[diasAtras] = new Chart(ctx, {
                             type: 'line',
                             data: {
@@ -513,6 +641,18 @@
                         });
                     }
                 }, 100);
+            });
+        }
+        
+        // Função para alternar a ordem dos gráficos
+        function alternarOrdemGraficos() {
+            ordemCrescente = !ordemCrescente;
+            const textoBotao = ordemCrescente ? '📅 Ordenar (Mais antigo → Recente)' : '📅 Ordenar (Mais recente → Antigo)';
+            document.getElementById('btnOrdenar').innerHTML = `🔄 ${textoBotao}`;
+            
+            // Recriar gráficos com nova ordem
+            if (historicoArrayGlobal.length > 0) {
+                exibirGraficosHistorico(historicoArrayGlobal);
             }
         }
 
@@ -533,6 +673,11 @@
                     atualizarDisplayNiveis();
                     atualizarDadosHoje();
                     dadosRecebidos = true;
+                    
+                    if (dadosNiveis.ultima_atualizacao) {
+                        ultimaAtualizacaoTimestamp = dadosNiveis.ultima_atualizacao;
+                        document.getElementById('ultimaAtualizacaoDados').innerHTML = `📡 Última atualização dos dados: ${formatarDataHoraCompleta(dadosNiveis.ultima_atualizacao)}`;
+                    }
                     
                     document.getElementById('status').innerHTML = '✅ Dados recebidos';
                     document.getElementById('status').className = 'status online';
@@ -576,6 +721,11 @@
                 atualizarDisplayNiveis();
                 atualizarDadosHoje();
                 
+                if (data.ultima_atualizacao) {
+                    ultimaAtualizacaoTimestamp = data.ultima_atualizacao;
+                    document.getElementById('ultimaAtualizacaoDados').innerHTML = `📡 Última atualização dos dados: ${formatarDataHoraCompleta(data.ultima_atualizacao)}`;
+                }
+                
                 document.getElementById('status').innerHTML = '✅ Dados recebidos do ESP32';
                 document.getElementById('status').className = 'status online';
                 document.getElementById('debug-info').innerHTML = `✅ Níveis: Casa=${niveis.casa}% Cozinha=${niveis.cozinha}%`;
@@ -609,6 +759,9 @@
                 buscarDadosDireto();
             }
         }, 5000);
+        
+        // Evento do botão de ordenação
+        document.getElementById('btnOrdenar').addEventListener('click', alternarOrdemGraficos);
         
         // Inicializar gráfico
         setTimeout(() => { 
